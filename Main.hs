@@ -5,8 +5,6 @@ import MessageQueue
 
 data Event = Event deriving (Show)
 
-type Queue = [Event]
-
 data GameState = GameState {
   gTickNr :: Int
 } deriving (Show)
