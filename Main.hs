@@ -2,25 +2,14 @@ import Control.Concurrent
 import Control.Concurrent.MVar
 
 import MessageQueue
-
-data Event = Event deriving (Show)
-
-data GameState = GameState {
-  gTickNr :: Int
-} deriving (Show)
-
-tick :: Maybe Event -> GameState -> GameState
-tick Nothing g = g { gTickNr = gTickNr g + 1 }
-tick (Just _) g = g { gTickNr = 0 }
-
-startState = GameState { gTickNr = 0 }
+import GameLogic
 
 main :: IO ()
 main = do
   queueVar <- newEmptyQueue
-  _ <- forkIO $ gameLoop queueVar startState
+  _ <- forkIO $ gameLoop queueVar newState
   _ <- getLine
-  pushMessage queueVar Event
+  pushMessage queueVar $ NewVillage (0,0)
 
 gameLoop :: MessageQueue Event -> GameState -> IO ()
 gameLoop queueVar gameState = do
