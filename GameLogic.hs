@@ -1,9 +1,11 @@
 module GameLogic (
   Event (..),
-  GameState,
-  newState,
-  tick
+  GameState (..),
+  newGameStateVar,
+  updateGameState,
 ) where
+
+import Control.Concurrent.MVar
 
 type Location = (Int, Int)
 type TickNr = Int
@@ -20,6 +22,9 @@ data GameState = GameState {
   gVillages :: [Village]
 } deriving (Show)
 
+newGameStateVar :: IO (MVar GameState)
+newGameStateVar = newMVar newState
+
 newState :: GameState
 newState =
   GameState {
@@ -27,6 +32,14 @@ newState =
     gVillages = []
   }
 
+updateGameState :: MVar GameState -> Maybe Event -> IO GameState
+updateGameState gameStateVar event = do
+  gameState <- takeMVar gameStateVar
+  let newState = tick event gameState
+  putMVar gameStateVar newState
+  return newState
+
+-- TODO use state monad for convenience
 tick :: Maybe Event -> GameState -> GameState
 tick Nothing g = updateTickNr g
 tick (Just (NewVillage location)) gameState =
