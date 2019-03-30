@@ -9,11 +9,13 @@ import Control.Concurrent.MVar
 
 type Location = (Int, Int)
 type TickNr = Int
+type Name = String
 
-data Event = NewVillage Location deriving (Show)
+data Event = NewVillage Name Location deriving (Show)
 
 data Village = Village {
   vCreated :: TickNr,
+  vName :: Name,
   vLocation :: Location
 } deriving (Show)
 
@@ -42,10 +44,10 @@ updateGameState gameStateVar event = do
 -- TODO use state monad for convenience
 tick :: Maybe Event -> GameState -> GameState
 tick Nothing g = updateTickNr g
-tick (Just (NewVillage location)) gameState =
+tick (Just (NewVillage name location)) gameState =
   let s = updateTickNr gameState
   in s {
-    gVillages = gVillages s ++ [Village (gTickNr s) location]
+    gVillages = gVillages s ++ [Village (gTickNr s) name location]
   }
 
 updateTickNr :: GameState -> GameState

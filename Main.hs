@@ -12,7 +12,7 @@ main = do
   gameStateVar <- newGameStateVar
   _ <- forkIO $ gameLoop queueVar gameStateVar
   _ <- forkIO $ runServer gameStateVar
-  pushMessage queueVar $ NewVillage (0,0)
+  pushMessage queueVar $ NewVillage "Gyurtown" (0,0)
 
 runServer :: MVar GameState -> IO ()
 runServer gameStateVar =
