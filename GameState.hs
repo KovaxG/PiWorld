@@ -1,5 +1,6 @@
 module GameState where
 
+type ID = Int
 type Location = (Int, Int)
 type TickNr = Int
 type Name = String
@@ -7,6 +8,7 @@ type Name = String
 data Event = NewVillage Name Location deriving (Show)
 
 data Village = Village {
+  vID :: ID,
   vCreated :: TickNr,
   vName :: Name,
   vLocation :: Location

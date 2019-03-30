@@ -4,6 +4,9 @@ module GameLogic (
 ) where
 
 import Control.Concurrent.MVar
+import Control.Monad.State
+import Data.List
+import Data.Maybe
 
 import GameState
 
@@ -20,19 +23,34 @@ newState =
 updateGameState :: MVar GameState -> Maybe Event -> IO GameState
 updateGameState gameStateVar event = do
   gameState <- takeMVar gameStateVar
-  let newState = tick event gameState
+  let newState = snd $ runState (tick event) gameState
   putMVar gameStateVar newState
   return newState
 
--- TODO use state monad for convenience
-tick :: Maybe Event -> GameState -> GameState
-tick Nothing g = updateTickNr g
-tick (Just (NewVillage name location)) gameState =
-  let s = updateTickNr gameState
-  in s {
-    gVillages = gVillages s ++ [Village (gTickNr s) name location]
-  }
+tick :: Maybe Event -> State GameState ()
+tick Nothing = updateTickNr
+tick (Just (NewVillage name location)) = do
+  updateTickNr
+  addNewVillage name location
 
-updateTickNr :: GameState -> GameState
-updateTickNr gameState =
-  gameState { gTickNr = gTickNr gameState + 1 }
+addNewVillage :: Name -> Location -> State GameState ()
+addNewVillage name location = do
+  curTick <- currentTick
+  villages <- gVillages <$> get
+  lastId <- getLastId
+  modify (\s -> s { gVillages = Village (lastId + 1) curTick name location : villages } )
+
+updateTickNr :: State GameState ()
+updateTickNr = do
+  curTick <- currentTick
+  modify (\s -> s { gTickNr = curTick + 1 } )
+
+currentTick :: State GameState TickNr
+currentTick = gTickNr <$> get
+
+getLastId :: State GameState ID
+getLastId = fromMaybe 0 . safeMax . map vID . gVillages <$> get
+
+safeMax :: Ord a => [a] -> Maybe a
+safeMax [] = Nothing
+safeMax as = Just $ maximum as
