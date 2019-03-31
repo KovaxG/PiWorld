@@ -22,7 +22,7 @@ main = do
   pushMessage queueVar $ NewVillage "Gyurtown2" (0,0)
   pushMessage queueVar $ NewVillage "Gyurtown3" (0,0)
   pushMessage queueVar $ NewVillage "Gyurtown4" (0,0)
-  addUser userDB (User "Gyuri" "")
+  addUser userDB "Gyuri" "asdf"
 
 gameLoop :: MessageQueue Event -> MVar GameState -> IO ()
 gameLoop queueVar gameStateVar = do

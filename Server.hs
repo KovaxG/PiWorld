@@ -88,19 +88,18 @@ handleRequest _ _ _ _ Nothing MainMenu = return response
             |> addBreak ""
             |> input "submit" "" "Log In"
           )
-
         )
       )
 
 handleRequest loginDB ip userDB _ Nothing (Login user pass) = do
-  exists <- checkUser userDB user pass
-  putStrLn $ show exists
-  if exists
-    then do
-      bindIpWithUser loginDB ip $ User user pass
-      return response
-    else return "User does not exist"
+  maybe userDoesntExist handleUser =<< getUser userDB user pass
   where
+    handleUser user = do
+      bindIpWithUser loginDB ip user
+      return response
+
+    userDoesntExist = return "User does not exist"
+
     response =
       startHtml
       |> html (

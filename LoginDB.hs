@@ -3,7 +3,8 @@ module LoginDB (
   newLoginDB,
   bindIpWithUser,
   getUserFromIp,
-  unbindIp
+  unbindIp,
+  showContents
 ) where
 
 import Data.Map
@@ -30,3 +31,9 @@ unbindIp :: LoginDB -> IP -> IO ()
 unbindIp loginDBVar ip = do
   loginDB <- takeMVar loginDBVar
   putMVar loginDBVar $ delete ip loginDB
+
+showContents :: LoginDB -> IO ()
+showContents loginDBVar = do
+  loginDB <- readMVar loginDBVar
+  putStrLn "Login Database"
+  mapM_ (putStrLn . show) $ toList loginDB

@@ -1,10 +1,15 @@
 module ServerTypes where
 
 type IP = String
+type ID = Int
 
 type UserName = String
 type Password = String
-data User = User UserName Password
+data User = User {
+  uID :: ID,
+  uName :: UserName,
+  uPass ::  Password
+}
 
 instance Show User where
-  show (User name _) = name
+  show user = uName user

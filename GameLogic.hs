@@ -9,6 +9,7 @@ import Data.List
 import Data.Maybe
 
 import GameState
+import Utils
 
 newGameStateVar :: IO (MVar GameState)
 newGameStateVar = newMVar newState
@@ -50,7 +51,3 @@ currentTick = gTickNr <$> get
 
 getLastId :: State GameState ID
 getLastId = fromMaybe 0 . safeMax . map vID . gVillages <$> get
-
-safeMax :: Ord a => [a] -> Maybe a
-safeMax [] = Nothing
-safeMax as = Just $ maximum as
