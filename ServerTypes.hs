@@ -1,7 +1,8 @@
 module ServerTypes where
 
+import Utils
+
 type IP = String
-type ID = Int
 
 type UserName = String
 type Password = String
@@ -13,3 +14,6 @@ data User = User {
 
 instance Show User where
   show user = uName user
+
+instance Eq User where
+  u1 == u2 = uID u1 == uID u2

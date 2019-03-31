@@ -16,6 +16,9 @@ input inputType inputName valueName = tag $
   " name=" ++ quoted inputName ++
   " value=" ++ quoted valueName
 
+button :: String -> HTML
+button name = input "submit" "button" name
+
 html  = addTags "html"
 title = addTags "title"
 hed = addTags "head" -- head is an existing function :(

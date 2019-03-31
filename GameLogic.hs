@@ -9,6 +9,7 @@ import Data.List
 import Data.Maybe
 
 import GameState
+import ServerTypes
 import Utils
 
 newGameStateVar :: IO (MVar GameState)
@@ -30,16 +31,17 @@ updateGameState gameStateVar event = do
 
 tick :: Maybe Event -> State GameState ()
 tick Nothing = updateTickNr
-tick (Just (NewVillage name location)) = do
+tick (Just (NewVillage name location user)) = do
   updateTickNr
-  addNewVillage name location
+  addNewVillage name location user
 
-addNewVillage :: Name -> Location -> State GameState ()
-addNewVillage name location = do
+addNewVillage :: Name -> Location -> User -> State GameState ()
+addNewVillage name location user = do
   curTick <- currentTick
   villages <- gVillages <$> get
   lastId <- getLastId
-  modify (\s -> s { gVillages = Village (lastId + 1) curTick name location : villages } )
+  let newVillage = Village (lastId + 1) user curTick name location
+  modify (\s -> s { gVillages = newVillage : villages } )
 
 updateTickNr :: State GameState ()
 updateTickNr = do
