@@ -12,7 +12,7 @@ import Debug.Trace
 import Network.Simple.TCP
 import Text.Parsec
 
-import GameState
+import GameTypes
 import LoginDB
 import MyHTML
 import ServerTypes
@@ -80,6 +80,8 @@ handleRequest _ _ _ gameState (Just user) (ViewVillage id) =
         then return $ ownVillage village
         else return $ response village
 
+    population = length . vVillagers
+
     ownVillage village =
       startHtml
       |> html (
@@ -87,6 +89,8 @@ handleRequest _ _ _ gameState (Just user) (ViewVillage id) =
         |> body (
           addBreak ("Welcome to your village, " ++ vName village ++ ".")
           |> addBreak ("This village is at " ++ show (vLocation village))
+          |> addBreak ("This town has a population of " ++ show (population village))
+          |> (addBreak . show =<< vVillagers village)
           |> form "/" (
             addBreak "Click here to return to the main page."
             |> button "Main Page"

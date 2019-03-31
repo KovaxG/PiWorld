@@ -13,3 +13,9 @@ safeMax as = Just $ maximum as
 
 filterNot :: (a -> Bool) -> [a] -> [a]
 filterNot f = filter (not . f)
+
+swap :: (a -> b -> c) -> (b -> a -> c)
+swap f a b = f b a
+
+lowerBound :: Ord a => a -> a -> a
+lowerBound b a = if a < b then b else a

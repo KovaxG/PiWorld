@@ -8,7 +8,7 @@ import Control.Monad.State
 import Data.List
 import Data.Maybe
 
-import GameState
+import GameTypes
 import ServerTypes
 import Utils
 
@@ -31,16 +31,23 @@ updateGameState gameStateVar event = do
 
 tick :: Maybe Event -> State GameState ()
 tick Nothing = updateTickNr
-tick (Just (NewVillage name location user)) = do
+tick (Just (NewVillage name location user names)) = do
   updateTickNr
-  addNewVillage name location user
+  addNewVillage name location user names
 
-addNewVillage :: Name -> Location -> User -> State GameState ()
-addNewVillage name location user = do
+addNewVillage :: Name -> Location -> User -> [Name] -> State GameState ()
+addNewVillage name location user names = do
   curTick <- currentTick
   villages <- gVillages <$> get
   lastId <- getLastId
-  let newVillage = Village (lastId + 1) user curTick name location
+  let newVillage = Village {
+    vID = (lastId + 1),
+    vUser = user,
+    vCreated = curTick,
+    vName = name,
+    vLocation = location,
+    vVillagers = zipWith (\n i -> Person i n) names [1..]
+  }
   modify (\s -> s { gVillages = newVillage : villages } )
 
 updateTickNr :: State GameState ()
