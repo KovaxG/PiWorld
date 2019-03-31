@@ -16,6 +16,7 @@ import GameState
 import LoginDB
 import MyHTML
 import ServerTypes
+import UserDB
 
 data GetRequest = Get String (Map String String) deriving (Show)
 type Response = String
@@ -24,81 +25,130 @@ data Request = MainMenu
              | WorldMap
              | LoginPage
              | Login UserName Password
+             | Logout
              deriving (Show)
 
 host = Host "127.0.0.1"
 port = "80"
 
-runServer :: MVar GameState -> LoginDB -> IO ()
-runServer gameStateVar loginDBVar =
+runServer :: MVar GameState -> LoginDB -> UserDB -> IO ()
+runServer gameStateVar loginDB userDB =
   serve host port $ \(socket, addr) -> do
     request <- maybe "No Message" unpack <$> recv socket 1024
-    --putStrLn request
     gameState <- readMVar gameStateVar
-    maybeUser <- getUserFromIp loginDBVar $ ipOf addr
-    let (response, user) = either (\a -> (a, maybeUser)) id $ handleInput gameState request maybeUser
+    let ip = ipOf addr
+    maybeUser <- getUserFromIp loginDB ip
+    let validRequestEither = parseGetRequest request >>= parseRequest
+    response <- either return (handleRequest loginDB ip userDB gameState maybeUser) validRequestEither
+    --putStrLn $ show validRequestEither
     --putStrLn response
-    --putStrLn $ show maybeUser
-    maybe (return ()) (bindIpWithUser loginDBVar (ipOf addr)) user
     send socket $ pack response
-  where
-    handleInput gameState s maybeUser =
-      parseGetRequest s >>= parseRequest >>= return . handleRequest gameState maybeUser
 
-handleRequest :: GameState -> Maybe User -> Request -> (HTML, Maybe User)
-handleRequest _ maybeUser MainMenu = (response, maybeUser)
+handleRequest :: LoginDB -> IP -> UserDB -> GameState -> Maybe User -> Request -> IO HTML
+handleRequest loginDB ip _ _ _ Logout = do
+  unbindIp loginDB ip
+  return response
+  where
+    response =
+      startHtml
+      |> html (
+        hed ( title "PiWorld Logout" )
+        |> body (
+          addBreak "Logout Successful"
+          |> form "/" (
+            addBreak "Click here to return to the main page."
+            |> input "submit" "" "Main Page"
+          )
+        )
+      )
+
+handleRequest _ _ _ _ (Just user) MainMenu = return response
+  where
+    response =
+      startHtml
+      |> html (
+        hed ( title "PiWorld Main Menu" )
+        |> body ("Hello, " ++ show user)
+        |> addBreak ""
+        |> form "/logout" (
+          "Click here to log out:"
+          |> input "submit" "" "Log Out"
+        )
+      )
+
+handleRequest _ _ _ _ Nothing MainMenu = return response
   where
     response =
       startHtml
       |> html (
         hed ( title "PiWorld Main Menu" )
         |> body (
-          "Welcome " ++ show maybeUser
+          form "/login" (
+            "You are not logged in, you can do that here:"
+            |> addBreak ""
+            |> input "submit" "" "Log In"
+          )
+
         )
       )
 
-handleRequest _ Nothing (Login user pass) = (response, Just user)
-  where
-    response =
-      startHtml
-      |> html (
-        hed ( title "PiWorld Login" )
-        |> body ( "Welcome " ++ user )
-      )
-
-handleRequest _ (Just user) (Login _ _) = (response, Just user)
+handleRequest loginDB ip userDB _ Nothing (Login user pass) = do
+  exists <- checkUser userDB user pass
+  putStrLn $ show exists
+  if exists
+    then do
+      bindIpWithUser loginDB ip $ User user pass
+      return response
+    else return "User does not exist"
   where
     response =
       startHtml
       |> html (
         hed ( title "PiWorld Login" )
         |> body (
-          "You are already logged in as " ++ user ++ ". Log off to sign in as another user."
+          addBreak ( "Welcome " ++ user )
+          |> form "/" (
+            addBreak ("Click here to go to main view: ")
+            |> input "submit" "" "Main Page"
+          )
         )
       )
 
-handleRequest _ (Just user) LoginPage = (response, Just user)
+handleRequest _ _ _ _ (Just user) (Login _ _) = return response
   where
     response =
       startHtml
       |> html (
         hed ( title "PiWorld Login" )
         |> body (
-          "You are already logged in as " ++ user ++ ". Log off to sign in as another user."
+          "You are already logged in as " ++ show user ++ ". Log off to sign in as another user."
         )
       )
 
-handleRequest gameState Nothing LoginPage = (response, Nothing)
+handleRequest _ _ _ _ (Just user) LoginPage = return response
   where
     response =
       startHtml
       |> html (
         hed ( title "PiWorld Login" )
         |> body (
-          form (
+          "You are already logged in as " ++ show user ++ ". Log off to sign in as another user."
+        )
+      )
+
+handleRequest _ _ _ gameState Nothing LoginPage = return response
+  where
+    response =
+      startHtml
+      |> html (
+        hed ( title "PiWorld Login" )
+        |> body (
+          form "" (
             addBreak "Login"
+            |> "username: "
             |> input "text" "username" ""
             |> addBreak ""
+            |> "password:"
             |> input "text" "password" ""
             |> addBreak ""
             |> input "submit" "login" "login"
@@ -106,7 +156,7 @@ handleRequest gameState Nothing LoginPage = (response, Nothing)
         )
       )
 
-handleRequest gameState maybeUser WorldMap = (response, maybeUser)
+handleRequest _ _ _ gameState maybeUser WorldMap = return response
   where
     toInput v = showVillage v ++ " " ++ input "submit" "" "view"
     response =
@@ -114,7 +164,7 @@ handleRequest gameState maybeUser WorldMap = (response, maybeUser)
       |> html (
         hed ( title "PiWorld Worldmap" )
         |> body (
-          form (
+          form "" (
             addBreak "Game Map"
             |> ((addBreak . toInput) =<< gVillages gameState)
           )
@@ -158,6 +208,7 @@ parseRequest req@(Get main vars)
     let name = fromJust $ Data.Map.lookup userName vars
         pass = fromJust $ Data.Map.lookup passWord vars
     in Right $ Login name pass
+  | main == "logout" = Right Logout
   | otherwise = Left $ show req ++ " not supported."
   where
     userName = "username"

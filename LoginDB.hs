@@ -2,7 +2,8 @@ module LoginDB (
   LoginDB,
   newLoginDB,
   bindIpWithUser,
-  getUserFromIp
+  getUserFromIp,
+  unbindIp
 ) where
 
 import Data.Map
@@ -24,3 +25,8 @@ getUserFromIp :: LoginDB -> IP -> IO (Maybe User)
 getUserFromIp loginDBVar ip = do
   loginDB <- readMVar loginDBVar
   return $ Data.Map.lookup ip loginDB
+
+unbindIp :: LoginDB -> IP -> IO ()
+unbindIp loginDBVar ip = do
+  loginDB <- takeMVar loginDBVar
+  putMVar loginDBVar $ delete ip loginDB

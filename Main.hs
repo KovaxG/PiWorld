@@ -5,20 +5,24 @@ import GameState (Event(NewVillage), GameState)
 import LoginDB (newLoginDB)
 import MessageQueue (newEmptyQueue, pushMessage, popMessage, MessageQueue)
 import Server (runServer)
+import UserDB (newUserDB, addUser)
+import ServerTypes (User (..))
 
 main :: IO ()
 main = do
   queueVar <- newEmptyQueue
   gameStateVar <- newGameStateVar
   loginDB <- newLoginDB
+  userDB <- newUserDB
   putStrLn "Starting game loop..."
   _ <- forkIO $ gameLoop queueVar gameStateVar
   putStrLn "Starting server..."
-  _ <- forkIO $ runServer gameStateVar loginDB
+  _ <- forkIO $ runServer gameStateVar loginDB userDB
   pushMessage queueVar $ NewVillage "Gyurtown" (0,0)
   pushMessage queueVar $ NewVillage "Gyurtown2" (0,0)
   pushMessage queueVar $ NewVillage "Gyurtown3" (0,0)
   pushMessage queueVar $ NewVillage "Gyurtown4" (0,0)
+  addUser userDB (User "Gyuri" "")
 
 gameLoop :: MessageQueue Event -> MVar GameState -> IO ()
 gameLoop queueVar gameStateVar = do
