@@ -22,7 +22,7 @@ newState =
     gTickNr = 0,
     gSize = (width, height),
     gTiles = fromList tiles,
-    gVillages = [Village 0 undefined undefined undefined (3,3) []]
+    gVillages = []
   }
   where
     width = 10
@@ -32,17 +32,17 @@ newState =
       then Forest
       else Grass
 
-updateGameState :: MVar GameState -> Maybe Event -> IO GameState
-updateGameState gameStateVar event = do
+updateGameState :: MVar GameState -> [Event] -> IO GameState
+updateGameState gameStateVar events' = do
+  let events = events' ++ [Tick]
   gameState <- takeMVar gameStateVar
-  let newState = snd $ runState (tick event) gameState
+  let newState = snd $ runState (traverse tick events) gameState
   putMVar gameStateVar newState
   return newState
 
-tick :: Maybe Event -> State GameState ()
-tick Nothing = updateTickNr
-tick (Just (NewVillage name location user names)) = do
-  updateTickNr
+tick :: Event -> State GameState ()
+tick Tick = updateTickNr
+tick (NewVillage name location user names) = do
   addNewVillage name location user names
 
 addNewVillage :: Name -> Location -> User -> [Name] -> State GameState ()
@@ -56,6 +56,7 @@ addNewVillage name location user names = do
     vCreated = curTick,
     vName = name,
     vLocation = location,
+    vInventory = Inventory 0,
     vVillagers = zipWith (\n i -> Person i n) names [1..]
   }
   modify (\s -> s { gVillages = newVillage : villages } )

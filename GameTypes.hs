@@ -13,7 +13,6 @@ type Location = (Int, Int)
 type TickNr = Int
 type Name = String
 
-
 data Inventory = Inventory {
   iWood :: Int
 } deriving (Show)
@@ -26,7 +25,9 @@ data Person = Person {
 instance Show Person where
   show = pName
 
-data Event = NewVillage Name Location User [Name] deriving (Show)
+data Event = NewVillage Name Location User [Name]
+           | Tick
+           deriving (Show)
 
 data Village = Village {
   vID :: ID,
@@ -34,6 +35,7 @@ data Village = Village {
   vCreated :: TickNr,
   vName :: Name,
   vLocation :: Location,
+  vInventory :: Inventory,
   vVillagers :: [Person]
 } deriving (Show)
 

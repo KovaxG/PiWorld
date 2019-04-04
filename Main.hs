@@ -4,7 +4,7 @@ import Data.Maybe
 import GameLogic (newGameStateVar, updateGameState)
 import GameTypes (Event(NewVillage), GameState (..), nameGenerator, showMap)
 import LoginDB (newLoginDB)
-import MessageQueue (newEmptyQueue, pushMessage, popMessage, MessageQueue)
+import MessageQueue (newEmptyQueue, pushMessage, popMessages, MessageQueue)
 import Server (runServer)
 import UserDB (newUserDB, addUser, getUser)
 import ServerTypes (User (..))
@@ -31,7 +31,7 @@ main = do
   klark <- fromJust <$> getUser userDB "Klark" "pass"
 
   names1 <- sequence $ replicate 4 nameGenerator
-  pushMessage queueVar $ NewVillage "Gyurtown" (0,0) gyuri names1
+  pushMessage queueVar $ NewVillage "Gyurtown" (2,2) gyuri names1
   names2 <- sequence $ replicate 4 nameGenerator
   pushMessage queueVar $ NewVillage "Peptown" (3,5) petra names2
   names3 <- sequence $ replicate 4 nameGenerator
@@ -41,8 +41,8 @@ main = do
 gameLoop :: MessageQueue Event -> MVar GameState -> IO ()
 gameLoop queueVar gameStateVar = do
   threadDelay 1000000
-  event <- popMessage queueVar
-  gameState <- updateGameState gameStateVar event
+  events <- popMessages queueVar
+  gameState <- updateGameState gameStateVar events
   --putStrLn $ show event
-  --putStrLn $ showMap gameState
+  --putStrLn $ show $ gTickNr gameState
   gameLoop queueVar gameStateVar

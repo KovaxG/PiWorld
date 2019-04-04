@@ -1,7 +1,7 @@
 module MessageQueue (
   MessageQueue,
   newEmptyQueue,
-  popMessage,
+  popMessages,
   pushMessage
 ) where
 
@@ -12,18 +12,13 @@ type MessageQueue a = MVar [a]
 newEmptyQueue :: IO (MessageQueue a)
 newEmptyQueue = newMVar []
 
-popMessage :: MessageQueue a -> IO (Maybe a)
-popMessage msgQueue = do
+popMessages :: MessageQueue a -> IO [a]
+popMessages msgQueue = do
   queue <- takeMVar msgQueue
-  let (event, rest) = getHead queue
-  putMVar msgQueue rest
-  return event
+  putMVar msgQueue []
+  return queue
 
 pushMessage :: MessageQueue a -> a -> IO ()
 pushMessage msgQueue msg = do
   queue <- takeMVar msgQueue
   putMVar msgQueue (queue ++ [msg])
-
-getHead :: [a] -> (Maybe a, [a])
-getHead [] = (Nothing, [])
-getHead as = (Just $ head as, tail as)
