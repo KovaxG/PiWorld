@@ -6,6 +6,7 @@ module GameLogic (
 import Control.Concurrent.MVar
 import Control.Monad.State
 import Data.List
+import Data.Map
 import Data.Maybe
 
 import GameTypes
@@ -19,8 +20,17 @@ newState :: GameState
 newState =
   GameState {
     gTickNr = 0,
-    gVillages = []
+    gSize = (width, height),
+    gTiles = fromList tiles,
+    gVillages = [Village 0 undefined undefined undefined (3,3) []]
   }
+  where
+    width = 10
+    height = 10
+    tiles = [((x, y), f x y) | x <- [1 .. width], y <- [1..height]]
+    f x y = if mod (x * y) 13 < 4
+      then Forest
+      else Grass
 
 updateGameState :: MVar GameState -> Maybe Event -> IO GameState
 updateGameState gameStateVar event = do
@@ -59,4 +69,4 @@ currentTick :: State GameState TickNr
 currentTick = gTickNr <$> get
 
 getLastId :: State GameState ID
-getLastId = fromMaybe 0 . safeMax . map vID . gVillages <$> get
+getLastId = fromMaybe 0 . safeMax . Data.List.map vID . gVillages <$> get

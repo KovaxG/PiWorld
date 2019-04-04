@@ -19,3 +19,10 @@ swap f a b = f b a
 
 lowerBound :: Ord a => a -> a -> a
 lowerBound b a = if a < b then b else a
+
+split :: Int -> [a] -> [[a]]
+split n as
+  | null as = []
+  | otherwise = taken : split n rest
+  where
+    (taken, rest) = splitAt n as

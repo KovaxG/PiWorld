@@ -2,7 +2,7 @@ import Control.Concurrent
 import Data.Maybe
 
 import GameLogic (newGameStateVar, updateGameState)
-import GameTypes (Event(NewVillage), GameState, nameGenerator)
+import GameTypes (Event(NewVillage), GameState (..), nameGenerator, showMap)
 import LoginDB (newLoginDB)
 import MessageQueue (newEmptyQueue, pushMessage, popMessage, MessageQueue)
 import Server (runServer)
@@ -24,13 +24,18 @@ main = do
 
   putStrLn "Adding test data..."
   addUser userDB "Gyuri" "asdf"
-  user <- fromJust <$> getUser userDB "Gyuri" "asdf"
+  addUser userDB "Pepusz" "boef"
+  addUser userDB "Klark" "pass"
+  gyuri <- fromJust <$> getUser userDB "Gyuri" "asdf"
+  petra <- fromJust <$> getUser userDB "Pepusz" "boef"
+  klark <- fromJust <$> getUser userDB "Klark" "pass"
+
   names1 <- sequence $ replicate 4 nameGenerator
-  pushMessage queueVar $ NewVillage "Gyurtown" (0,0) user names1
+  pushMessage queueVar $ NewVillage "Gyurtown" (0,0) gyuri names1
   names2 <- sequence $ replicate 4 nameGenerator
-  pushMessage queueVar $ NewVillage "Peptown" (3,5) user names2
+  pushMessage queueVar $ NewVillage "Peptown" (3,5) petra names2
   names3 <- sequence $ replicate 4 nameGenerator
-  pushMessage queueVar $ NewVillage "Garbageton" (3,5) (User 42 "Klark" "pass") names3
+  pushMessage queueVar $ NewVillage "Garbageton" (1,1) klark names3
   putStrLn "Done."
 
 gameLoop :: MessageQueue Event -> MVar GameState -> IO ()
@@ -39,5 +44,5 @@ gameLoop queueVar gameStateVar = do
   event <- popMessage queueVar
   gameState <- updateGameState gameStateVar event
   --putStrLn $ show event
-  --putStrLn $ show gameState
+  --putStrLn $ showMap gameState
   gameLoop queueVar gameStateVar
