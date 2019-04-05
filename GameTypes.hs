@@ -17,9 +17,12 @@ data Inventory = Inventory {
   iWood :: Int
 } deriving (Show)
 
+data Job = Civilian | Woodcutter deriving (Show, Eq)
+
 data Person = Person {
   pID :: ID,
-  pName :: Name
+  pName :: Name,
+  pJob :: Job
 }
 
 instance Show Person where
@@ -43,7 +46,7 @@ showVillage v = vName v ++ " " ++ show (vLocation v)
 
 data Tile = Grass
           | Forest
-          deriving (Show)
+          deriving (Show, Eq)
 
 data GameState = GameState {
   gTickNr :: TickNr,

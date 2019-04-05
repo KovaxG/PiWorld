@@ -8,6 +8,7 @@ import Control.Monad.State
 import Data.List
 import Data.Map
 import Data.Maybe
+import Debug.Trace
 
 import GameTypes
 import ServerTypes
@@ -36,19 +37,22 @@ updateGameState :: MVar GameState -> [Event] -> IO GameState
 updateGameState gameStateVar events' = do
   let events = events' ++ [Tick]
   gameState <- takeMVar gameStateVar
-  let newState = snd $ runState (traverse tick events) gameState
+  let newState = execState (traverse tick events) gameState
+  putStrLn $ show $ vInventory $ head $ gVillages newState
   putMVar gameStateVar newState
   return newState
 
 tick :: Event -> State GameState ()
-tick Tick = updateTickNr
+tick Tick = do
+  updateVillages
+  updateTickNr
 tick (NewVillage name location user names) = do
   addNewVillage name location user names
 
 addNewVillage :: Name -> Location -> User -> [Name] -> State GameState ()
 addNewVillage name location user names = do
-  curTick <- currentTick
-  villages <- gVillages <$> get
+  curTick <- gets gTickNr
+  villages <- gets gVillages
   lastId <- getLastId
   let newVillage = Village {
     vID = (lastId + 1),
@@ -57,17 +61,43 @@ addNewVillage name location user names = do
     vName = name,
     vLocation = location,
     vInventory = Inventory 0,
-    vVillagers = zipWith (\n i -> Person i n) names [1..]
+    vVillagers = zipWith (\n i -> Person i n Woodcutter) names [1..]
   }
-  modify (\s -> s { gVillages = newVillage : villages } )
+  modify $ \s -> s { gVillages = newVillage : villages }
+
+updateVillages :: State GameState ()
+updateVillages = do
+  villages <- gets gVillages
+  terrain <- gets gTiles
+  let newVillages = execState (updateVillage terrain) <$> villages
+  modify $ \s -> s { gVillages = newVillages }
+
+updateVillage :: Data.Map.Map Location Tile -> State Village ()
+updateVillage terrain = do
+  location <- gets vLocation
+  villagers <- gets vVillagers
+  let jobs = pJob <$> villagers
+  let resources = catMaybes $ (fromTerrain terrain) <$> area 1 location
+  inventory <- gets vInventory
+  let newInventory = updateInventory resources jobs inventory
+  modify $ \v -> v { vInventory = newInventory }
+
+updateInventory :: [Tile] -> [Job] -> Inventory -> Inventory
+updateInventory ts js inv =
+  inv { iWood = iWood inv + if elem Forest ts then wood else 0 }
+  where
+    wood = length $ Data.List.filter (==Woodcutter) js
+
+area :: Int -> Location -> [Location]
+area n (x, y) = [(i, j) | i <- [x-n.. x+n], j <- [y-n .. y+n]]
 
 updateTickNr :: State GameState ()
 updateTickNr = do
-  curTick <- currentTick
+  curTick <- gets gTickNr
   modify (\s -> s { gTickNr = curTick + 1 } )
 
-currentTick :: State GameState TickNr
-currentTick = gTickNr <$> get
-
 getLastId :: State GameState ID
-getLastId = fromMaybe 0 . safeMax . Data.List.map vID . gVillages <$> get
+getLastId = gets $ fromMaybe 0 . safeMax . fmap vID . gVillages
+
+fromTerrain :: Map Location Tile -> Location -> Maybe Tile
+fromTerrain t loc = Data.Map.lookup loc t
