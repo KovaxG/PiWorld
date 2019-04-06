@@ -60,7 +60,7 @@ addNewVillage name location user names = do
     vCreated = curTick,
     vName = name,
     vLocation = location,
-    vInventory = Inventory 0,
+    vInventory = emptyInventory,
     vVillagers = zipWith (\n i -> Person i n Woodcutter) names [1..]
   }
   modify $ \s -> s { gVillages = newVillage : villages }
@@ -84,8 +84,9 @@ updateVillage terrain = do
 
 updateInventory :: [Tile] -> [Job] -> Inventory -> Inventory
 updateInventory ts js inv =
-  inv { iWood = iWood inv + if elem Forest ts then wood else 0 }
+  addResource inv Wood woodNr
   where
+    woodNr = if elem Forest ts then wood else 0
     wood = length $ Data.List.filter (==Woodcutter) js
 
 area :: Int -> Location -> [Location]

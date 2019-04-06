@@ -13,9 +13,22 @@ type Location = (Int, Int)
 type TickNr = Int
 type Name = String
 
-data Inventory = Inventory {
-  iWood :: Int
-} deriving (Show)
+data Resource = Wood deriving (Show, Eq, Ord)
+
+type Inventory = Map Resource Int
+
+emptyInventory :: Inventory
+emptyInventory = Data.Map.empty
+
+fromInventory :: Inventory -> Resource -> Int
+fromInventory inv res = fromMaybe 0 $ Data.Map.lookup res inv
+
+addResource :: Inventory -> Resource -> Int -> Inventory
+addResource inv res qty =
+  maybe notFound found $ Data.Map.lookup res inv
+  where
+    notFound = Data.Map.insert res qty inv
+    found q = Data.Map.insert res (q + qty) inv
 
 data Job = Civilian | Woodcutter deriving (Show, Eq)
 
