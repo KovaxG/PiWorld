@@ -54,6 +54,14 @@ tick Tick = do
   updateVillages
 tick (NewVillage name location user names) = do
   addNewVillage name location user names
+tick (ChangeJobOfVillager id newJob) = do
+  villages <- gets gVillages
+  let newVillages = f <$> villages
+  modify $ \s -> s { gVillages = newVillages }
+  where
+    f v =
+      let newVills = replacefw ((==id) . pID) (\p -> p { pJob = newJob } ) (vVillagers v)
+      in v { vVillagers = newVills }
 
 addNewVillage :: Name -> Location -> User -> [Name] -> State GameState ()
 addNewVillage name location user names = do

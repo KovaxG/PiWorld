@@ -39,7 +39,7 @@ toHTML (OwnedVillageView villageName location  villagers inventory) =
     )
   )
   where
-    personButton (name, id) = name ++ " " ++ input "submit" (show id) "Job"
+    personButton (name, job, id) = name ++ " (" ++ show job ++ ") " ++ input "submit" (show id) "Job"
 
 toHTML LogoutPage =
   htmlWith (title "PiWorld Logout") (
@@ -126,7 +126,22 @@ toHTML IllegalAction =
     "Hold right there criminal scum! You violated the law!"
   )
 
-toHTML (PersonJobView name) =
-  htmlWith (title ("Job for " ++ name) ) (
-    name
+toHTML (PersonJobView name id job availableJobs) =
+  htmlWith (title ("Job of " ++ name) ) (
+    addBreak ("Name: " ++ name)
+    |> addBreak ("Current Job: " ++ show job)
+    |> form "" (
+      addBreak . toInputs =<< availableJobs
+    )
+  )
+  where
+    toInputs job = input "submit" (show id) (show job)
+
+toHTML JobChanged =
+  htmlWith (title ("Great Success") ) (
+    addBreak "Job changed."
+    |> form "/" (
+      addBreak ("Click here to go to main view: ")
+      |> button "Main Page"
+    )
   )

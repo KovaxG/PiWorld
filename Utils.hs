@@ -2,6 +2,7 @@ module Utils where
 
 import Data.Char
 import Data.List
+import Data.Maybe
 
 type ID = Int
 
@@ -33,3 +34,15 @@ count a = length . filter (==a)
 
 maxBy :: Ord b => (a -> b) -> [a] -> a
 maxBy f as = maximumBy (\a b -> f a `compare` f b) as
+
+safeRead :: Read a => String -> Maybe a
+safeRead = listToMaybe . fmap fst . reads
+
+replacefw :: Eq a => (a -> Bool) -> (a -> a) -> [a] -> [a]
+replacefw f g as = fmap (\a -> if f a then g a else a) as
+
+replacef :: Eq a => (a -> Bool) -> a -> [a] -> [a]
+replacef f b as = fmap (\a -> if f a then b else a) as
+
+replace :: Eq a => a -> a -> [a] -> [a]
+replace aa b as = fmap (\a -> if aa == a then b else a) as

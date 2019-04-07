@@ -53,7 +53,7 @@ data Job = Civilian
          | Explorer
          | Hunter
          | StoneGatherer
-         deriving (Show, Eq)
+         deriving (Show, Read, Eq)
 
 data Person = Person {
   pID :: ID,
@@ -61,8 +61,12 @@ data Person = Person {
   pJob :: Job
 } deriving (Show)
 
+instance Eq Person where
+  p1 == p2 = pID p1 == pID p2
+
 data Event = NewVillage Name Location User [Name]
            | Tick
+           | ChangeJobOfVillager ID Job
            deriving (Show)
 
 data Village = Village {

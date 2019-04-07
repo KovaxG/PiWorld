@@ -19,7 +19,7 @@ main = do
   _ <- forkIO $ gameLoop queueVar gameStateVar
 
   putStrLn "Starting server..."
-  _ <- forkIO $ runServer gameStateVar loginDB userDB
+  _ <- forkIO $ runServer gameStateVar queueVar loginDB userDB
 
   putStrLn "Adding test data..."
   addUser userDB "Gyuri" "asdf"

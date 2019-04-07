@@ -10,7 +10,7 @@ type IP = String
 data GetRequest = Get String (Map String String) deriving (Show)
 
 data Response = DefaultVillageView Name UserName Location
-              | OwnedVillageView Name Location [(Name, ID)] Inventory
+              | OwnedVillageView Name Location [(Name, Job, ID)] Inventory
               | VillageNotFound
               | Unrecognised
               | LogoutPage
@@ -22,7 +22,8 @@ data Response = DefaultVillageView Name UserName Location
               | LoginScreen
               | WorldMapScreen [(Name, Location, ID)]
               | IllegalAction
-              | PersonJobView Name
+              | PersonJobView Name ID Job [Job]
+              | JobChanged
               deriving (Show)
 
 data Request = MainMenu
@@ -32,4 +33,5 @@ data Request = MainMenu
              | Logout
              | ViewVillage ID
              | JobMenu ID
+             | JobChange ID Job
              deriving (Show)
