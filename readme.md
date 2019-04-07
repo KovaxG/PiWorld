@@ -2,9 +2,7 @@
 
 :white_check_mark:  A village is made up of 4 villages when created
 
-:black_square_button: Each villages can perform a task
-
-:black_square_button: You can create new villagers by marrying up two villagers and waiting for a baby
+:white_check_mark: Each villages can perform a task
 
 :black_square_button: All villagers can have babies
 
@@ -23,4 +21,3 @@
 :black_square_button: If a player doesn't start a new town the villagers start to wonder about
 
 :black_square_button: Villagers have skill points and other attributes
-
