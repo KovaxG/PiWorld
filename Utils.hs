@@ -1,6 +1,7 @@
 module Utils where
 
 import Data.Char
+import Data.List
 
 type ID = Int
 
@@ -26,3 +27,9 @@ split n as
   | otherwise = taken : split n rest
   where
     (taken, rest) = splitAt n as
+
+count :: Eq a => a -> [a] -> Int
+count a = length . filter (==a)
+
+maxBy :: Ord b => (a -> b) -> [a] -> a
+maxBy f as = maximumBy (\a b -> f a `compare` f b) as

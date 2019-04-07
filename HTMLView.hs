@@ -28,7 +28,9 @@ toHTML (OwnedVillageView villageName location  villagers inventory) =
     addBreak ("Welcome to your village, " ++ villageName ++ ".")
     |> addBreak ("This village is at " ++ show location)
     |> addBreak ("This town has a population of " ++ show (length villagers))
-    |> (addBreak . show =<< villagers)
+    |> form "/person" (
+      addBreak . personButton =<< villagers
+    )
     |> addBreak ""
     |> addBreak ("Inventory: " ++ show inventory)
     |> form "/" (
@@ -36,6 +38,8 @@ toHTML (OwnedVillageView villageName location  villagers inventory) =
       |> button "Main Page"
     )
   )
+  where
+    personButton (name, id) = name ++ " " ++ input "submit" (show id) "Job"
 
 toHTML LogoutPage =
   htmlWith (title "PiWorld Logout") (
@@ -51,7 +55,7 @@ toHTML (Overview userName villages) =
     addBreak ("Hello, " ++ userName)
     |> form "" (
       addBreak "Here are your villages"
-      |> (villageAndButton =<< villages)
+      |> (addBreak . villageAndButton =<< villages)
     )
     |> addBreak ""
     |> form "/map" (
@@ -65,7 +69,7 @@ toHTML (Overview userName villages) =
     )
   )
   where
-    villageAndButton (name, id) = name ++ " " ++ input "submit" (show id) "view" ++ "\n"
+    villageAndButton (name, id) = name ++ input "submit" (show id) "view"
 
 toHTML MainPage =
   htmlWith (title "PiWorld Main Menu") (
@@ -110,9 +114,19 @@ toHTML (WorldMapScreen villages) =
   htmlWith (title "PiWorld Worldmap") (
     form "" (
       addBreak "Game Map"
-      |> (villageAndButton =<< villages)
+      |> (addBreak . villageAndButton =<< villages)
     )
   )
   where
     villageAndButton (name, location, id) =
-      addBreak $ name ++ " " ++ show location ++ " " ++ input "submit" (show id) "view"
+      name ++ " " ++ show location ++ " " ++ input "submit" (show id) "view"
+
+toHTML IllegalAction =
+  htmlWith (title "Criminal Scum") (
+    "Hold right there criminal scum! You violated the law!"
+  )
+
+toHTML (PersonJobView name) =
+  htmlWith (title ("Job for " ++ name) ) (
+    name
+  )

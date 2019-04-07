@@ -6,6 +6,7 @@ import Control.Concurrent.MVar
 import Data.Bifunctor
 import Data.ByteString.Char8 (pack, unpack)
 import Data.Either.Extra
+import Data.List
 import Data.Map
 import Data.Maybe
 import Debug.Trace
@@ -32,7 +33,9 @@ runServer gameStateVar loginDB userDB =
     let validRequestEither = parseGetRequest request >>= parseRequest
     let requestHandler = handleRequest loginDB ip userDB gameState maybeUser
     response <- either unrecognisedRequest requestHandler validRequestEither
-    putStrLn $ show response
+    putStrLn $ "<-- " ++ show validRequestEither
+    putStrLn $ "--> " ++ show response
+    putStrLn ""
     send socket $ pack (toHTML response)
     where
       unrecognisedRequest _ = return Unrecognised
@@ -48,10 +51,11 @@ handleRequest _ _ _ gameState Nothing (ViewVillage id) =
 handleRequest _ _ _ gameState (Just user) (ViewVillage id) =
   return $ maybe notFound villageFound $ getVillage gameState id
   where
+    personData p = (pName p, pID p)
     notFound = VillageNotFound
     villageFound village =
       if vUser village == user
-      then OwnedVillageView (vName village) (vLocation village) (vVillagers village) (vInventory village)
+      then OwnedVillageView (vName village) (vLocation village) (personData <$> vVillagers village) (vInventory village)
       else DefaultVillageView (vName village) (uName $ vUser village) (vLocation village)
 
 handleRequest loginDB ip _ _ _ Logout = do
@@ -77,11 +81,21 @@ handleRequest _ _ _ _ (Just user) (Login _ _) = return $ AlreadyLoggedIn (uName 
 
 handleRequest _ _ _ _ (Just user) LoginPage = return $ AlreadyLoggedIn (uName user)
 
-handleRequest _ _ _ gameState Nothing LoginPage = return LoginScreen
+handleRequest _ _ _ _ Nothing LoginPage = return LoginScreen
 
 handleRequest _ _ _ gameState _ WorldMap = return $ WorldMapScreen (toData <$> gVillages gameState)
   where
     toData v = (vName v, vLocation v, vID v)
+
+handleRequest _ _ _ gameState (Just user) (JobMenu id) =
+  return $ maybe notFound found $ find ((==id) . pID) allPeople
+  where
+    notFound = IllegalAction
+    found p = PersonJobView (pName p)
+    allPeople = vVillagers =<< gVillages gameState
+
+
+handleRequest _ _ _ _ _ _ = return IllegalAction
 
 ipOf :: SockAddr -> String
 ipOf = takeWhile (/= ':') . show
@@ -123,6 +137,7 @@ parseRequest req@(Get main vars)
         pass = fromJust $ Data.Map.lookup passWord vars
     in Right $ Login name pass
   | main == "logout" = Right Logout
+  | main == "person" && hasKeys && isID firstKey = Right $ JobMenu (read firstKey)
   | otherwise = Left $ show req ++ " not supported."
   where
     hasKeys = length (keys vars) > 0

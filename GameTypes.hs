@@ -4,6 +4,7 @@ import Data.Char
 import Data.List
 import Data.Map
 import Data.Maybe
+import Data.Set
 import System.Random
 
 import Utils
@@ -58,10 +59,7 @@ data Person = Person {
   pID :: ID,
   pName :: Name,
   pJob :: Job
-}
-
-instance Show Person where
-  show = pName
+} deriving (Show)
 
 data Event = NewVillage Name Location User [Name]
            | Tick
@@ -74,21 +72,23 @@ data Village = Village {
   vName :: Name,
   vLocation :: Location,
   vInventory :: Inventory,
-  vVillagers :: [Person]
+  vVillagers :: [Person],
+  vDiscoveredTerrain :: Set Terrain
 } deriving (Show)
 
 showVillage v = vName v ++ " " ++ show (vLocation v)
 
-data Tile = Grass
-          | Forest
-          | RockyHill
-          deriving (Show, Eq)
+data Terrain = Grass
+             | Forest
+             | RockyHill
+             deriving (Show, Eq, Ord)
 
 data GameState = GameState {
   gTickNr :: TickNr,
   gSize :: (Int, Int),
-  gTiles :: Data.Map.Map Location Tile,
-  gVillages :: [Village]
+  gTerrain :: Data.Map.Map Location Terrain,
+  gVillages :: [Village],
+  gPersonID :: Int
 } deriving (Show)
 
 showMap :: GameState -> String
@@ -100,7 +100,7 @@ showMap gameState =
       | i <- [1 .. x], j <- [1 .. y]]
   where
     (x, y) = gSize gameState
-    gameMap = gTiles gameState
+    gameMap = gTerrain gameState
     draw Grass = '.'
     draw Forest = '|'
     draw RockyHill = ':'
