@@ -61,7 +61,7 @@ addNewVillage name location user names = do
     vName = name,
     vLocation = location,
     vInventory = emptyInventory,
-    vVillagers = zipWith (\n i -> Person i n Woodcutter) names [1..]
+    vVillagers = zipWith (\n i -> Person i n Civilian) names [1..]
   }
   modify $ \s -> s { gVillages = newVillage : villages }
 
@@ -79,15 +79,17 @@ updateVillage terrain = do
   let jobs = pJob <$> villagers
   let resources = catMaybes $ (fromTerrain terrain) <$> area 1 location
   inventory <- gets vInventory
-  let newInventory = updateInventory resources jobs inventory
+  let newInventory = execState (updateInventory resources jobs) inventory
   modify $ \v -> v { vInventory = newInventory }
 
-updateInventory :: [Tile] -> [Job] -> Inventory -> Inventory
-updateInventory ts js inv =
-  addResource inv Wood woodNr
+updateInventory :: [Tile] -> [Job] -> State Inventory ()
+updateInventory ts js = do
+  modify $ addResource Wood woodNr
+  modify $ addResource Food foodNr
   where
     woodNr = if elem Forest ts then wood else 0
     wood = length $ Data.List.filter (==Woodcutter) js
+    foodNr = length $ Data.List.filter(==Hunter) js
 
 area :: Int -> Location -> [Location]
 area n (x, y) = [(i, j) | i <- [x-n.. x+n], j <- [y-n .. y+n]]

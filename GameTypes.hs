@@ -27,7 +27,9 @@ instance Show User where
 instance Eq User where
   u1 == u2 = uID u1 == uID u2
 
-data Resource = Wood deriving (Show, Eq, Ord)
+data Resource = Wood
+              | Food
+              deriving (Show, Eq, Ord)
 
 type Inventory = Map Resource Int
 
@@ -37,14 +39,18 @@ emptyInventory = Data.Map.empty
 fromInventory :: Inventory -> Resource -> Int
 fromInventory inv res = fromMaybe 0 $ Data.Map.lookup res inv
 
-addResource :: Inventory -> Resource -> Int -> Inventory
-addResource inv res qty =
+addResource :: Resource -> Int -> Inventory -> Inventory
+addResource res qty inv =
   maybe notFound found $ Data.Map.lookup res inv
   where
     notFound = Data.Map.insert res qty inv
     found q = Data.Map.insert res (q + qty) inv
 
-data Job = Civilian | Woodcutter deriving (Show, Eq)
+data Job = Civilian
+         | Woodcutter
+         | Explorer
+         | Hunter
+         deriving (Show, Eq)
 
 data Person = Person {
   pID :: ID,
