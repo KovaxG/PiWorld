@@ -29,6 +29,7 @@ instance Eq User where
 
 data Resource = Wood
               | Food
+              | Stone
               deriving (Show, Eq, Ord)
 
 type Inventory = Map Resource Int
@@ -50,6 +51,7 @@ data Job = Civilian
          | Woodcutter
          | Explorer
          | Hunter
+         | StoneGatherer
          deriving (Show, Eq)
 
 data Person = Person {
@@ -79,6 +81,7 @@ showVillage v = vName v ++ " " ++ show (vLocation v)
 
 data Tile = Grass
           | Forest
+          | RockyHill
           deriving (Show, Eq)
 
 data GameState = GameState {
@@ -100,6 +103,7 @@ showMap gameState =
     gameMap = gTiles gameState
     draw Grass = '.'
     draw Forest = '|'
+    draw RockyHill = ':'
     putCity loc c =
       if any (==loc) $ Data.List.map vLocation (gVillages gameState)
       then 'O'

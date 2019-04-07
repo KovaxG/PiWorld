@@ -86,10 +86,13 @@ updateInventory :: [Tile] -> [Job] -> State Inventory ()
 updateInventory ts js = do
   modify $ addResource Wood woodNr
   modify $ addResource Food foodNr
+  modify $ addResource Stone stoneNr
   where
     woodNr = if elem Forest ts then wood else 0
     wood = length $ Data.List.filter (==Woodcutter) js
     foodNr = length $ Data.List.filter(==Hunter) js
+    stoneNr = if elem RockyHill ts then stone else 0
+    stone = length $ Data.List.filter (==StoneGatherer) js
 
 area :: Int -> Location -> [Location]
 area n (x, y) = [(i, j) | i <- [x-n.. x+n], j <- [y-n .. y+n]]
