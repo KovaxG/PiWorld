@@ -13,24 +13,13 @@ import Network.Simple.TCP
 import Text.Parsec
 
 import GameTypes
+import HTMLView
 import LoginDB
-import MyHTML
 import ServerTypes
 import UserDB
 import Utils
 
-data GetRequest = Get String (Map String String) deriving (Show)
-type Response = String
-
-data Request = MainMenu
-             | WorldMap
-             | LoginPage
-             | Login UserName Password
-             | Logout
-             | ViewVillage ID
-             deriving (Show)
-
-host = Host "127.0.0.1"
+host = Host "127.0.0.1" --"192.168.0.136"
 port = "80"
 
 runServer :: MVar GameState -> LoginDB -> UserDB -> IO ()
@@ -41,214 +30,58 @@ runServer gameStateVar loginDB userDB =
     let ip = ipOf addr
     maybeUser <- getUserFromIp loginDB ip
     let validRequestEither = parseGetRequest request >>= parseRequest
-    response <- either return (handleRequest loginDB ip userDB gameState maybeUser) validRequestEither
-    putStrLn $ show validRequestEither
-    --putStrLn response
-    send socket $ pack response
+    let requestHandler = handleRequest loginDB ip userDB gameState maybeUser
+    response <- either unrecognisedRequest requestHandler validRequestEither
+    putStrLn $ show response
+    send socket $ pack (toHTML response)
+    where
+      unrecognisedRequest _ = return Unrecognised
 
-handleRequest :: LoginDB -> IP -> UserDB -> GameState -> Maybe User -> Request -> IO HTML
+handleRequest :: LoginDB -> IP -> UserDB -> GameState -> Maybe User -> Request -> IO Response
 handleRequest _ _ _ gameState Nothing (ViewVillage id) =
-  maybe notFound villageFound $ getVillage gameState id
+  return $ maybe notFound villageFound $ getVillage gameState id
   where
-    notFound = return "No such village found."
-
-    villageFound village = do
-      return $ response village
-
-    response village =
-      startHtml
-      |> html (
-        hed ( title (vName village) )
-        |> body (
-          addBreak ("Welcome to " ++ vName village ++ ".")
-          |> addBreak ("This village is managed by " ++ show (vUser village))
-          |> addBreak ("This village is at " ++ show (vLocation village))
-          |> form "/" (
-            addBreak "Click here to return to the main page."
-            |> button "Main Page"
-          )
-        )
-      )
+    notFound = VillageNotFound
+    villageFound village =
+      DefaultVillageView (vName village) (uName $ vUser village) (vLocation village)
 
 handleRequest _ _ _ gameState (Just user) (ViewVillage id) =
-  maybe notFound villageFound $ getVillage gameState id
+  return $ maybe notFound villageFound $ getVillage gameState id
   where
-    notFound = return "No such village found."
-
-    villageFound village = do
+    notFound = VillageNotFound
+    villageFound village =
       if vUser village == user
-        then return $ ownVillage village
-        else return $ response village
-
-    population = length . vVillagers
-
-    ownVillage village =
-      startHtml
-      |> html (
-        hed ( title (vName village) )
-        |> body (
-          addBreak ("Welcome to your village, " ++ vName village ++ ".")
-          |> addBreak ("This village is at " ++ show (vLocation village))
-          |> addBreak ("This town has a population of " ++ show (population village))
-          |> (addBreak . show =<< vVillagers village)
-          |> form "/" (
-            addBreak "Click here to return to the main page."
-            |> button "Main Page"
-          )
-        )
-      )
-
-    response village =
-      startHtml
-      |> html (
-        hed ( title (vName village) )
-        |> body (
-          addBreak ("Welcome to " ++ vName village ++ ".")
-          |> addBreak ("This village is managed by " ++ show (vUser village))
-          |> addBreak ("This village is at " ++ show (vLocation village))
-          |> form "/" (
-            addBreak "Click here to return to the main page."
-            |> button "Main Page"
-          )
-        )
-      )
+      then OwnedVillageView (vName village) (vLocation village) (vVillagers village) (vInventory village)
+      else DefaultVillageView (vName village) (uName $ vUser village) (vLocation village)
 
 handleRequest loginDB ip _ _ _ Logout = do
   unbindIp loginDB ip
-  return response
-  where
-    response =
-      startHtml
-      |> html (
-        hed ( title "PiWorld Logout" )
-        |> body (
-          addBreak "Logout Successful"
-          |> form "/" (
-            addBreak "Click here to return to the main page."
-            |> button "Main Page"
-          )
-        )
-      )
+  return LogoutPage
 
-handleRequest _ _ _ gameState (Just user) MainMenu = return response
+handleRequest _ _ _ gameState (Just user) MainMenu =
+  return $ Overview (uName user) (nameAndId <$> villagesOf gameState user)
   where
-    villageAndButton v = vName v ++ " " ++ input "submit" (show $ vID v) "view" ++ "\n"
-    villages = villagesOf gameState user
-    response =
-      startHtml
-      |> html (
-        hed ( title "PiWorld Main Menu" )
-        |> body ("Hello, " ++ show user)
-        |> addBreak ""
-        |> form "" (
-          addBreak "Here are your villages"
-          |> (addBreak . villageAndButton =<< villages)
-        )
-        |> addBreak ""
-        |> form "/map" (
-          addBreak "View world map: "
-          |> button "World Map"
-        )
-        |> addBreak ""
-        |> form "/logout" (
-          "Click here to log out:"
-          |> button "Log Out"
-        )
-      )
+    nameAndId v = (vName v, vID v)
 
-handleRequest _ _ _ _ Nothing MainMenu = return response
-  where
-    response =
-      startHtml
-      |> html (
-        hed ( title "PiWorld Main Menu" )
-        |> body (
-          form "/login" (
-            "You are not logged in, you can do that here:"
-            |> addBreak ""
-            |> button "Log In"
-          )
-        )
-      )
+handleRequest _ _ _ _ Nothing MainMenu = return $ MainPage
 
 handleRequest loginDB ip userDB _ Nothing (Login user pass) = do
   maybe userDoesntExist handleUser =<< getUser userDB user pass
   where
+    userDoesntExist = return FailedLogin
     handleUser user = do
       bindIpWithUser loginDB ip user
-      return response
+      return $ LoginSuccess (uName user)
 
-    userDoesntExist = return "User does not exist"
+handleRequest _ _ _ _ (Just user) (Login _ _) = return $ AlreadyLoggedIn (uName user)
 
-    response =
-      startHtml
-      |> html (
-        hed ( title "PiWorld Login" )
-        |> body (
-          addBreak ( "Welcome " ++ user )
-          |> form "/" (
-            addBreak ("Click here to go to main view: ")
-            |> button "Main Page"
-          )
-        )
-      )
+handleRequest _ _ _ _ (Just user) LoginPage = return $ AlreadyLoggedIn (uName user)
 
-handleRequest _ _ _ _ (Just user) (Login _ _) = return response
+handleRequest _ _ _ gameState Nothing LoginPage = return LoginScreen
+
+handleRequest _ _ _ gameState _ WorldMap = return $ WorldMapScreen (toData <$> gVillages gameState)
   where
-    response =
-      startHtml
-      |> html (
-        hed ( title "PiWorld Login" )
-        |> body (
-          "You are already logged in as " ++ show user ++ ". Log off to sign in as another user."
-        )
-      )
-
-handleRequest _ _ _ _ (Just user) LoginPage = return response
-  where
-    response =
-      startHtml
-      |> html (
-        hed ( title "PiWorld Login" )
-        |> body (
-          "You are already logged in as " ++ show user ++ ". Log off to sign in as another user."
-        )
-      )
-
-handleRequest _ _ _ gameState Nothing LoginPage = return response
-  where
-    response =
-      startHtml
-      |> html (
-        hed ( title "PiWorld Login" )
-        |> body (
-          form "" (
-            addBreak "Login"
-            |> "username: "
-            |> input "text" "username" ""
-            |> addBreak ""
-            |> "password:"
-            |> input "text" "password" ""
-            |> addBreak ""
-            |> button "login"
-          )
-        )
-      )
-
-handleRequest _ _ _ gameState _ WorldMap = return response
-  where
-    toInput v = showVillage v ++ " " ++ input "submit" (show $ vID v) "view"
-    response =
-      startHtml
-      |> html (
-        hed ( title "PiWorld Worldmap" )
-        |> body (
-          form "" (
-            addBreak "Game Map"
-            |> ((addBreak . toInput) =<< gVillages gameState)
-          )
-        )
-      )
+    toData v = (vName v, vLocation v, vID v)
 
 ipOf :: SockAddr -> String
 ipOf = takeWhile (/= ':') . show

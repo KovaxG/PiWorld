@@ -6,12 +6,26 @@ import Data.Map
 import Data.Maybe
 import System.Random
 
-import ServerTypes
 import Utils
 
 type Location = (Int, Int)
 type TickNr = Int
 type Name = String
+
+type UserName = String
+type Password = String
+
+data User = User {
+  uID :: ID,
+  uName :: UserName,
+  uPass ::  Password
+}
+
+instance Show User where
+  show user = uName user
+
+instance Eq User where
+  u1 == u2 = uID u1 == uID u2
 
 data Resource = Wood deriving (Show, Eq, Ord)
 

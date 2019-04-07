@@ -38,7 +38,7 @@ updateGameState gameStateVar events' = do
   let events = events' ++ [Tick]
   gameState <- takeMVar gameStateVar
   let newState = execState (traverse tick events) gameState
-  putStrLn $ show $ vInventory $ head $ gVillages newState
+  --putStrLn $ show $ vInventory $ head $ gVillages newState
   putMVar gameStateVar newState
   return newState
 

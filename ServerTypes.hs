@@ -1,19 +1,32 @@
 module ServerTypes where
 
+import Data.Map
+
+import GameTypes
 import Utils
 
 type IP = String
 
-type UserName = String
-type Password = String
-data User = User {
-  uID :: ID,
-  uName :: UserName,
-  uPass ::  Password
-}
+data GetRequest = Get String (Map String String) deriving (Show)
 
-instance Show User where
-  show user = uName user
+data Response = DefaultVillageView Name UserName Location
+              | OwnedVillageView Name Location [Person] Inventory
+              | VillageNotFound
+              | Unrecognised
+              | LogoutPage
+              | Overview UserName [(Name, ID)]
+              | MainPage
+              | FailedLogin
+              | LoginSuccess UserName
+              | AlreadyLoggedIn UserName
+              | LoginScreen
+              | WorldMapScreen [(Name, Location, ID)]
+              deriving (Show)
 
-instance Eq User where
-  u1 == u2 = uID u1 == uID u2
+data Request = MainMenu
+             | WorldMap
+             | LoginPage
+             | Login UserName Password
+             | Logout
+             | ViewVillage ID
+             deriving (Show)

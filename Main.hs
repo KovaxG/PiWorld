@@ -2,12 +2,11 @@ import Control.Concurrent
 import Data.Maybe
 
 import GameLogic (newGameStateVar, updateGameState)
-import GameTypes (Event(NewVillage), GameState (..), nameGenerator, showMap)
+import GameTypes (Event(NewVillage), GameState (..), nameGenerator, showMap, User (..))
 import LoginDB (newLoginDB)
 import MessageQueue (newEmptyQueue, pushMessage, popMessages, MessageQueue)
 import Server (runServer)
 import UserDB (newUserDB, addUser, getUser)
-import ServerTypes (User (..))
 
 main :: IO ()
 main = do

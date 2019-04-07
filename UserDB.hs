@@ -11,6 +11,7 @@ import Control.Concurrent.MVar
 import Data.List
 import Data.Maybe
 
+import GameTypes
 import ServerTypes
 import Utils
 

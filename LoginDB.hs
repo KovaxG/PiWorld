@@ -10,6 +10,7 @@ module LoginDB (
 import Data.Map
 import Control.Concurrent.MVar
 
+import GameTypes
 import ServerTypes
 
 type LoginDB = MVar (Map IP User)
