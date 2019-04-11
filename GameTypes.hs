@@ -105,9 +105,9 @@ showMap gameState =
   where
     (x, y) = gSize gameState
     gameMap = gTerrain gameState
-    draw Grass = '.'
+    draw Grass = ' '
     draw Forest = '|'
-    draw RockyHill = ':'
+    draw RockyHill = '*'
     putCity loc c =
       if any (==loc) $ Data.List.map vLocation (gVillages gameState)
       then 'O'
