@@ -1,7 +1,7 @@
 import Control.Concurrent
 import Data.Maybe
 
-import GameLogic (newGameStateVar, updateGameState)
+import GameLogic (newGameStateVar, gameLoop)
 import GameTypes (Event(NewVillage), GameState (..), nameGenerator, showMap, User (..))
 import LoginDB (newLoginDB)
 import MessageQueue (newEmptyQueue, pushMessage, popMessages, MessageQueue)
@@ -36,12 +36,3 @@ main = do
   names3 <- sequence $ replicate 4 nameGenerator
   pushMessage queueVar $ NewVillage "Garbageton" (1,1) klark names3
   putStrLn "Done."
-
-gameLoop :: MessageQueue Event -> MVar GameState -> IO ()
-gameLoop queueVar gameStateVar = do
-  threadDelay 1000000
-  events <- popMessages queueVar
-  gameState <- updateGameState gameStateVar events
-  --putStrLn $ show event
-  --putStrLn $ show $ gTickNr gameState
-  gameLoop queueVar gameStateVar

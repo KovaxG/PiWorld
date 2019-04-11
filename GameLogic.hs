@@ -1,10 +1,9 @@
-{-# LANGUAGE BangPatterns #-}
-
 module GameLogic (
   newGameStateVar,
-  updateGameState,
+  gameLoop
 ) where
 
+import Control.Concurrent
 import Control.Concurrent.MVar
 import Control.Monad.State
 import Data.List
@@ -14,6 +13,7 @@ import Data.Set hiding (foldl, (\\))
 import Debug.Trace
 
 import GameTypes
+import MessageQueue
 import ServerTypes
 import Utils
 
@@ -36,6 +36,15 @@ newState =
     f x y = if mod (x * y) 13 < 4
       then Forest
       else Grass
+
+gameLoop :: MessageQueue Event -> MVar GameState -> IO ()
+gameLoop queueVar gameStateVar = do
+  threadDelay 1000000
+  events <- popMessages queueVar
+  gameState <- updateGameState gameStateVar events
+  --putStrLn $ show event
+  --putStrLn $ show $ gTickNr gameState
+  gameLoop queueVar gameStateVar
 
 updateGameState :: MVar GameState -> [Event] -> IO GameState
 updateGameState gameStateVar events' = do
@@ -104,7 +113,7 @@ updateVillage terrain = do
   modify $ \v -> v { vInventory = newInventory }
 
   let explorerNr = count Explorer jobs
-  !discoveredLocations <- gets vDiscoveredTerrain
+  discoveredLocations <- gets vDiscoveredTerrain
   let accessibleTerrain = nub $ catMaybes $ (fromTerrain terrain) <$> usableLocations
   let undiscoveredLocations = accessibleTerrain \\ (Data.Set.toList discoveredLocations)
   let currentDiscoveredLocation = take explorerNr undiscoveredLocations
@@ -115,15 +124,12 @@ updateVillage terrain = do
 
 updateInventory :: [Terrain] -> [Job] -> State Inventory ()
 updateInventory ts js = do
-  modify $ addResource Wood woodNr
-  modify $ addResource Food foodNr
-  modify $ addResource Stone stoneNr
+  modify $ addResource Wood $ gatherFrom Forest Woodcutter
+  modify $ addResource Stone $ gatherFrom RockyHill StoneGatherer
+  modify $ addResource Food $ count Hunter js
   where
-    woodNr = if elem Forest ts then wood else 0
-    wood = count Woodcutter js
-    foodNr = count Hunter js
-    stoneNr = if elem RockyHill ts then stone else 0
-    stone = count StoneGatherer js
+    gatherFrom :: Terrain -> Job -> Int
+    gatherFrom t j = if elem t ts then count j js else 0
 
 area :: Int -> Location -> [Location]
 area n (x, y) = [(i, j) | i <- [x-n.. x+n], j <- [y-n .. y+n]]
