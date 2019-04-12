@@ -13,8 +13,8 @@ type Location = (Int, Int)
 type TickNr = Int
 type Name = String
 
-type UserName = String
-type Password = String
+newtype UserName = UserName { getUserName :: String } deriving (Show, Eq)
+newtype Password = Password String deriving (Show, Eq)
 
 data User = User {
   uID :: ID,
@@ -23,7 +23,7 @@ data User = User {
 }
 
 instance Show User where
-  show user = uName user
+  show user = getUserName $ uName user
 
 instance Eq User where
   u1 == u2 = uID u1 == uID u2
@@ -55,32 +55,39 @@ data Job = Civilian
          | StoneGatherer
          deriving (Show, Read, Eq)
 
+newtype HungerMeter = HungerMeter { getHunger :: Double } deriving (Show)
+newtype HealthMeter = HealthMeter { getHealth :: Double } deriving (Show)
+
 data Person = Person {
   pID :: ID,
   pName :: Name,
-  pJob :: Job
+  pJob :: Job,
+  pHunger :: HungerMeter,
+  pHealth :: HealthMeter
 } deriving (Show)
 
 instance Eq Person where
   p1 == p2 = pID p1 == pID p2
 
-data Event = NewVillage Name Location User [Name]
+data Event = NewVillage VillageName Location User [Name]
            | Tick
            | ChangeJobOfVillager ID Job
            deriving (Show)
+
+newtype VillageName = VillageName { getVillageName :: String } deriving (Show)
 
 data Village = Village {
   vID :: ID,
   vUser :: User,
   vCreated :: TickNr,
-  vName :: Name,
+  vName :: VillageName,
   vLocation :: Location,
   vInventory :: Inventory,
   vVillagers :: [Person],
   vDiscoveredTerrain :: Set Terrain
 } deriving (Show)
 
-showVillage v = vName v ++ " " ++ show (vLocation v)
+showVillage v = getVillageName (vName v) ++ " " ++ show (vLocation v)
 
 data Terrain = Grass
              | Forest

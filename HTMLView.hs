@@ -1,5 +1,6 @@
 module HTMLView where
 
+import GameTypes
 import MyHTML
 import ServerTypes
 
@@ -13,9 +14,9 @@ toHTML Unrecognised = ""
 toHTML VillageNotFound = "No such village found."
 
 toHTML (DefaultVillageView villageName userName location) =
-  htmlWith (title villageName) (
-    addBreak ("Welcome to " ++ villageName ++ ".")
-    |> addBreak ("This village is managed by " ++ userName)
+  htmlWith (title $ getVillageName villageName) (
+    addBreak ("Welcome to " ++ getVillageName villageName ++ ".")
+    |> addBreak ("This village is managed by " ++ getUserName userName)
     |> addBreak ("This village is at " ++ show location)
     |> form "/" (
       addBreak "Click here to return to the main page."
@@ -24,8 +25,8 @@ toHTML (DefaultVillageView villageName userName location) =
   )
 
 toHTML (OwnedVillageView villageName location  villagers inventory) =
-  htmlWith (title villageName) (
-    addBreak ("Welcome to your village, " ++ villageName ++ ".")
+  htmlWith (title $ getVillageName villageName) (
+    addBreak ("Welcome to your village, " ++ getVillageName villageName ++ ".")
     |> addBreak ("This village is at " ++ show location)
     |> addBreak ("This town has a population of " ++ show (length villagers))
     |> form "/person" (
@@ -39,7 +40,12 @@ toHTML (OwnedVillageView villageName location  villagers inventory) =
     )
   )
   where
-    personButton (name, job, id) = name ++ " (" ++ show job ++ ") " ++ input "submit" (show id) "Job"
+    personButton (name, job, id, hunger, health) =
+      name
+      ++ " (" ++ show job ++ ") "
+      ++ " Hunger:" ++ show hunger
+      ++ " Hitpoints: " ++ show health
+      ++ input "submit" (show id) "Job"
 
 toHTML LogoutPage =
   htmlWith (title "PiWorld Logout") (
@@ -52,7 +58,7 @@ toHTML LogoutPage =
 
 toHTML (Overview userName villages) =
   htmlWith (title "PiWorld Main Menu") (
-    addBreak ("Hello, " ++ userName)
+    addBreak ("Hello, " ++ show userName)
     |> form "" (
       addBreak "Here are your villages"
       |> (addBreak . villageAndButton =<< villages)
@@ -69,7 +75,7 @@ toHTML (Overview userName villages) =
     )
   )
   where
-    villageAndButton (name, id) = name ++ input "submit" (show id) "view"
+    villageAndButton (name, id) = getVillageName name ++ input "submit" (show id) "view"
 
 toHTML MainPage =
   htmlWith (title "PiWorld Main Menu") (
@@ -82,7 +88,7 @@ toHTML MainPage =
 
 toHTML (LoginSuccess userName) =
   htmlWith (title "PiWorld Login") (
-    addBreak ( "Welcome " ++ userName )
+    addBreak ( "Welcome " ++ show userName )
     |> form "/" (
       addBreak ("Click here to go to main view: ")
       |> button "Main Page"
@@ -93,7 +99,7 @@ toHTML FailedLogin = "User does not exist"
 
 toHTML (AlreadyLoggedIn userName) =
   htmlWith (title "PiWorld Login") (
-    "You are already logged in as " ++ userName ++ ". Log off to sign in as another user."
+    "You are already logged in as " ++ show userName ++ ". Log off to sign in as another user."
   )
 
 toHTML LoginScreen =
@@ -119,7 +125,7 @@ toHTML (WorldMapScreen villages) =
   )
   where
     villageAndButton (name, location, id) =
-      name ++ " " ++ show location ++ " " ++ input "submit" (show id) "view"
+      getVillageName name ++ " " ++ show location ++ " " ++ input "submit" (show id) "view"
 
 toHTML IllegalAction =
   htmlWith (title "Criminal Scum") (

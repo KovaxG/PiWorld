@@ -75,20 +75,20 @@ tick (ChangeJobOfVillager id newJob) = do
       let newVills = replacefw ((==id) . pID) (\p -> p { pJob = newJob } ) (vVillagers village)
       in village { vVillagers = newVills }
 
-addNewVillage :: Name -> Location -> User -> [Name] -> State GameState ()
+addNewVillage :: VillageName -> Location -> User -> [Name] -> State GameState ()
 addNewVillage name location user names = do
   curTick <- gets gTickNr
   villages <- gets gVillages
   lastId <- getLastId
   personId <- gets gPersonID
-  let newPeople = zipWith (\n i -> Person i n Civilian) names [personId ..]
+  let newPeople = zipWith (\n i -> Person i n Civilian (HungerMeter 100.0) (HealthMeter 100.0)) names [personId ..]
   let newVillage = Village {
     vID = (lastId + 1),
     vUser = user,
     vCreated = curTick,
     vName = name,
     vLocation = location,
-    vInventory = emptyInventory,
+    vInventory = addResource Food 16.0 emptyInventory,
     vVillagers = newPeople,
     vDiscoveredTerrain = Data.Set.empty
   }
@@ -108,6 +108,15 @@ updateVillagers :: Data.Map.Map Location Terrain -> State Village ()
 updateVillagers terrain = do
   gathererLogic terrain
   explorerLogic terrain
+  needsLogic
+
+needsLogic :: State Village ()
+needsLogic = do
+  villagers <- gets vVillagers
+  return () -- TODO
+  where
+    eatingRatePerDay = 3
+    eatingRatePerTick = 3 / (24 * 60 * 60)
 
 gathererLogic :: Data.Map.Map Location Terrain -> State Village ()
 gathererLogic terrain = do

@@ -54,7 +54,7 @@ handleRequest _ _ _ gameStateVar _ (Just user) (ViewVillage id) = do
   gameState <- readMVar gameStateVar
   return $ maybe notFound villageFound $ getVillage gameState id
   where
-    personData p = (pName p, pJob p, pID p)
+    personData p = (pName p, pJob p, pID p, pHunger p, pHealth p)
     notFound = VillageNotFound
     villageFound village =
       if vUser village == user
@@ -160,8 +160,8 @@ parseRequest req@(Get main vars)
   | main == "map" = Right WorldMap
   | main == "login" && length (keys vars) < 2 = Right LoginPage
   | main == "login" && member userName vars && member passWord vars =
-    let name = fromJust $ Data.Map.lookup userName vars
-        pass = fromJust $ Data.Map.lookup passWord vars
+    let name = UserName $ fromJust $ Data.Map.lookup userName vars
+        pass = Password $ fromJust $ Data.Map.lookup passWord vars
     in Right $ Login name pass
   | main == "logout" = Right Logout
   | main == "person" && hasKeys && isID firstKey && firstValue == "Job" = Right $ JobMenu (read firstKey)

@@ -9,18 +9,18 @@ type IP = String
 
 data GetRequest = Get String (Map String String) deriving (Show)
 
-data Response = DefaultVillageView Name UserName Location
-              | OwnedVillageView Name Location [(Name, Job, ID)] Inventory
+data Response = DefaultVillageView VillageName UserName Location
+              | OwnedVillageView VillageName Location [(Name, Job, ID, HungerMeter, HealthMeter)] Inventory
               | VillageNotFound
               | Unrecognised
               | LogoutPage
-              | Overview UserName [(Name, ID)]
+              | Overview UserName [(VillageName, ID)]
               | MainPage
               | FailedLogin
               | LoginSuccess UserName
               | AlreadyLoggedIn UserName
               | LoginScreen
-              | WorldMapScreen [(Name, Location, ID)]
+              | WorldMapScreen [(VillageName, Location, ID)]
               | IllegalAction
               | PersonJobView Name ID Job [Job]
               | JobChanged
