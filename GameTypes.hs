@@ -33,15 +33,15 @@ data Resource = Wood
               | Stone
               deriving (Show, Eq, Ord)
 
-type Inventory = Map Resource Int
+type Inventory = Map Resource Double
 
 emptyInventory :: Inventory
 emptyInventory = Data.Map.empty
 
-fromInventory :: Inventory -> Resource -> Int
-fromInventory inv res = fromMaybe 0 $ Data.Map.lookup res inv
+fromInventory :: Inventory -> Resource -> Double
+fromInventory inv res = fromMaybe 0.0 $ Data.Map.lookup res inv
 
-addResource :: Resource -> Int -> Inventory -> Inventory
+addResource :: Resource -> Double -> Inventory -> Inventory
 addResource res qty inv =
   maybe notFound found $ Data.Map.lookup res inv
   where

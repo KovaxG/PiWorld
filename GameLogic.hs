@@ -11,6 +11,7 @@ import Data.Map hiding (foldl, (\\))
 import Data.Maybe
 import Data.Set hiding (foldl, (\\))
 import Debug.Trace
+import System.Time.Extra
 
 import GameTypes
 import MessageQueue
@@ -40,9 +41,10 @@ newState =
 
 gameLoop :: MessageQueue Event -> MVar GameState -> IO ()
 gameLoop queueVar gameStateVar = do
-  threadDelay 1000000
+  threadDelay 1000000 -- TODO account for time taken to update tick
   events <- popMessages queueVar
-  gameState <- updateGameState gameStateVar events
+  (dt, gameState) <- duration(updateGameState gameStateVar events)
+  putStrLn $ showDuration dt
   --putStrLn $ show event
   --putStrLn $ show $ gTickNr gameState
   gameLoop queueVar gameStateVar
@@ -137,10 +139,13 @@ updateInventory :: [Terrain] -> [Job] -> State Inventory ()
 updateInventory ts js = do
   modify $ addResource Wood $ gatherFrom Forest Woodcutter
   modify $ addResource Stone $ gatherFrom RockyHill StoneGatherer
-  modify $ addResource Food $ count Hunter js
+  modify $ addResource Food $ gatherRatePerTick * (fromIntegral $ count Hunter js)
   where
-    gatherFrom :: Terrain -> Job -> Int
-    gatherFrom t j = if elem t ts then count j js else 0
+    gatherFrom :: Terrain -> Job -> Double
+    gatherFrom t j = gatherRatePerTick * (fromIntegral $ if elem t ts then count j js else 0)
+
+    gatherRatePerTick = gatherRatePerDay / (24 * 60 * 60)
+    gatherRatePerDay = 10
 
 areaOf :: Int -> Location -> [Location]
 areaOf n (x, y) = [(i, j) | i <- [x-n.. x+n], j <- [y-n .. y+n]]
