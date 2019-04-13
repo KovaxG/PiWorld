@@ -49,6 +49,12 @@ gameLoop queueVar gameStateVar = do
   --putStrLn $ show $ gTickNr gameState
   gameLoop queueVar gameStateVar
 
+ticksPerDay :: Int
+ticksPerDay = 24 * 60 * 60
+
+perDayToPerTick :: Int -> Double
+perDayToPerTick a = fromIntegral a / fromIntegral ticksPerDay
+
 updateGameState :: MVar GameState -> [Event] -> IO GameState
 updateGameState gameStateVar events' = do
   let events = Tick : events'
@@ -113,10 +119,47 @@ updateVillagers terrain = do
 needsLogic :: State Village ()
 needsLogic = do
   villagers <- gets vVillagers
-  return () -- TODO
+  inv <- gets vInventory
+  let food = fromInventory inv Food
+  let (newFood, newVillagers) = foldl rule (food, []) villagers
+  modify $ \v -> v { vVillagers = newVillagers }
+  let newInv = updateResource inv Food newFood
+  modify $ \v -> v { vInventory = newInv }
   where
     eatingRatePerDay = 3
-    eatingRatePerTick = 3 / (24 * 60 * 60)
+    eatingRatePerTick = perDayToPerTick eatingRatePerDay
+
+    hungerRecoveryRatePerDay = 300
+    hungerRecoveryRatePerTick = perDayToPerTick hungerRecoveryRatePerDay
+
+    hungerRatePerDay = 100
+    hungerRatePerTick = perDayToPerTick hungerRatePerDay
+
+    healingRatePerDay = 10
+    healingRatePerTick = perDayToPerTick healingRatePerDay
+
+    damageRatePerDay = 20
+    damageRatePerTick = perDayToPerTick damageRatePerDay
+
+    rule :: (Double, [Person]) -> Person -> (Double, [Person])
+    rule (food, vs) v
+      | food >= eatingRatePerTick && pHunger v >= (HungerMeter 100.0) =
+        let health = getHealth $ pHealth v
+            v' = v { pHealth = toHealthMeter (health + healingRatePerTick) }
+        in (food - eatingRatePerTick, v' : vs)
+      | food >= eatingRatePerTick =
+        let hunger = getHunger $ pHunger v
+            v' = v { pHunger = toHungerMeter (hunger + hungerRecoveryRatePerTick) }
+        in (food - eatingRatePerTick, v' : vs)
+      | pHunger v > (HungerMeter 0.0) =
+        let hunger = getHunger $ pHunger v
+            v' = v { pHunger =  toHungerMeter (hunger - hungerRatePerTick) }
+        in (food, v' : vs)
+      | pHealth v > (HealthMeter 0.0) =
+        let health = getHealth $ pHealth v
+            v' = v { pHealth = toHealthMeter (health - damageRatePerTick) }
+        in (food, v' : vs)
+      | otherwise = (food, vs)
 
 gathererLogic :: Data.Map.Map Location Terrain -> State Village ()
 gathererLogic terrain = do
@@ -153,8 +196,9 @@ updateInventory ts js = do
     gatherFrom :: Terrain -> Job -> Double
     gatherFrom t j = gatherRatePerTick * (fromIntegral $ if elem t ts then count j js else 0)
 
-    gatherRatePerTick = gatherRatePerDay / (24 * 60 * 60)
     gatherRatePerDay = 10
+    gatherRatePerTick = perDayToPerTick gatherRatePerDay
+
 
 areaOf :: Int -> Location -> [Location]
 areaOf n (x, y) = [(i, j) | i <- [x-n.. x+n], j <- [y-n .. y+n]]

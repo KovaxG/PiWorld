@@ -43,8 +43,8 @@ toHTML (OwnedVillageView villageName location  villagers inventory) =
     personButton (name, job, id, hunger, health) =
       name
       ++ " (" ++ show job ++ ") "
-      ++ " Hunger:" ++ show hunger
-      ++ " Hitpoints: " ++ show health
+      ++ " Hunger:" ++ show (getHunger hunger)
+      ++ " Hitpoints: " ++ show (getHealth health)
       ++ input "submit" (show id) "Job"
 
 toHTML LogoutPage =
@@ -58,7 +58,7 @@ toHTML LogoutPage =
 
 toHTML (Overview userName villages) =
   htmlWith (title "PiWorld Main Menu") (
-    addBreak ("Hello, " ++ show userName)
+    addBreak ("Hello, " ++ getUserName userName)
     |> form "" (
       addBreak "Here are your villages"
       |> (addBreak . villageAndButton =<< villages)
@@ -88,7 +88,7 @@ toHTML MainPage =
 
 toHTML (LoginSuccess userName) =
   htmlWith (title "PiWorld Login") (
-    addBreak ( "Welcome " ++ show userName )
+    addBreak ( "Welcome " ++ getUserName userName )
     |> form "/" (
       addBreak ("Click here to go to main view: ")
       |> button "Main Page"
@@ -99,7 +99,7 @@ toHTML FailedLogin = "User does not exist"
 
 toHTML (AlreadyLoggedIn userName) =
   htmlWith (title "PiWorld Login") (
-    "You are already logged in as " ++ show userName ++ ". Log off to sign in as another user."
+    "You are already logged in as " ++ getUserName userName ++ ". Log off to sign in as another user."
   )
 
 toHTML LoginScreen =

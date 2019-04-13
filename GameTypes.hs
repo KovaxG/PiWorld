@@ -41,6 +41,10 @@ emptyInventory = Data.Map.empty
 fromInventory :: Inventory -> Resource -> Double
 fromInventory inv res = fromMaybe 0.0 $ Data.Map.lookup res inv
 
+updateResource :: Inventory -> Resource -> Double -> Inventory
+updateResource inv res qty = Data.Map.insert res qty inv
+
+
 addResource :: Resource -> Double -> Inventory -> Inventory
 addResource res qty inv =
   maybe notFound found $ Data.Map.lookup res inv
@@ -55,8 +59,21 @@ data Job = Civilian
          | StoneGatherer
          deriving (Show, Read, Eq)
 
-newtype HungerMeter = HungerMeter { getHunger :: Double } deriving (Show)
-newtype HealthMeter = HealthMeter { getHealth :: Double } deriving (Show)
+newtype HungerMeter = HungerMeter { getHunger :: Double } deriving (Show, Eq, Ord)
+
+toHungerMeter :: Double -> HungerMeter
+toHungerMeter d
+  | d >= 100.0 = HungerMeter 100.0
+  | d <= 0 = HungerMeter 0
+  | otherwise = HungerMeter d
+
+newtype HealthMeter = HealthMeter { getHealth :: Double } deriving (Show, Eq, Ord)
+
+toHealthMeter :: Double -> HealthMeter
+toHealthMeter d
+  | d >= 100.0 = HealthMeter 100.0
+  | d <= 0 = HealthMeter 0
+  | otherwise = HealthMeter d
 
 data Person = Person {
   pID :: ID,
