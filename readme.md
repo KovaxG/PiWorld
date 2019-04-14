@@ -1,8 +1,12 @@
 # PiWorld
 
+## Conceptual
+
 :white_check_mark:  A village is made up of 4 villages when created
 
 :white_check_mark: Each villages can perform a task
+
+:white_check_mark: Villagers with better tools gather faster
 
 :black_square_button: All villagers can have babies
 
@@ -21,3 +25,11 @@
 :black_square_button: If a player doesn't start a new town the villagers start to wonder about
 
 :black_square_button: Villagers have skill points and other attributes
+
+:black_square_button: Villages start with some starting building
+
+:black_square_button: Buildings can be used as shelter for villagers or as storage or work stations
+
+## Technical
+
+:black_square_button: Force evaluation of GameState every tick

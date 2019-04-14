@@ -5,11 +5,12 @@ module GameLogic (
 
 import Control.Concurrent
 import Control.Concurrent.MVar
+import Control.DeepSeq
 import Control.Monad.State
 import Data.List
-import Data.Map hiding (foldl, (\\))
+import Data.Map hiding (foldl, (\\), filter, null)
 import Data.Maybe
-import Data.Set hiding (foldl, (\\))
+import Data.Set hiding (foldl, (\\), filter, null)
 import Debug.Trace
 import System.Time.Extra
 
@@ -63,6 +64,7 @@ updateGameState gameStateVar events' = do
   --putStrLn $ show $ vInventory $ head $ gVillages newState
   --putStrLn $ show $ vDiscoveredTerrain $ head $ gVillages newState
   --putStrLn $ show newState
+  --deepseq newState $ putMVar gameStateVar newState -- TODO to force eval
   putMVar gameStateVar newState
   return newState
 
@@ -87,7 +89,7 @@ addNewVillage name location user names = do
   villages <- gets gVillages
   lastId <- getLastId
   personId <- gets gPersonID
-  let newPeople = zipWith (\n i -> Person i n Civilian (HungerMeter 100.0) (HealthMeter 100.0)) names [personId ..]
+  let newPeople = zipWith (\n i -> Person i n Civilian (HungerMeter 100.0) (HealthMeter 100.0) EmptyHanded) names [personId ..]
   let newVillage = Village {
     vID = (lastId + 1),
     vUser = user,
@@ -164,13 +166,11 @@ needsLogic = do
 gathererLogic :: Data.Map.Map Location Terrain -> State Village ()
 gathererLogic terrain = do
   villagers <- gets vVillagers
-  let jobs = fmap pJob villagers
-
   location <- gets vLocation
   let resources = getTerrain terrain (areaOf 1 location)
 
   inventory <- gets vInventory
-  let newInventory = execState (updateInventory resources jobs) inventory
+  let newInventory = execState (updateInventory resources villagers) inventory
   modify $ \v -> v { vInventory = newInventory }
 
 explorerLogic :: Data.Map.Map Location Terrain -> State Village ()
@@ -187,14 +187,17 @@ explorerLogic terrain = do
   let newDiscoveredLocations = foldl (\s a -> Data.Set.insert a s) discoveredTerrainTypes currentDiscoveredTerrainType
   modify $ \v -> v { vDiscoveredTerrain = newDiscoveredLocations }
 
-updateInventory :: [Terrain] -> [Job] -> State Inventory ()
-updateInventory ts js = do
-  modify $ addResource Wood $ gatherFrom Forest Woodcutter
-  modify $ addResource Stone $ gatherFrom RockyHill StoneGatherer
-  modify $ addResource Food $ gatherRatePerTick * (fromIntegral $ count Hunter js)
+updateInventory :: [Terrain] -> [Person] -> State Inventory ()
+updateInventory terrains ps = do
+  modify $ addResource Wood $ trace (show $ gatherFrom [Forest] Woodcutter) $ gatherFrom [Forest] Woodcutter
+  modify $ addResource Stone $ gatherFrom [RockyHill] StoneGatherer
+  modify $ addResource Food $ gatherFrom [Grass, Forest] Hunter
   where
-    gatherFrom :: Terrain -> Job -> Double
-    gatherFrom t j = gatherRatePerTick * (fromIntegral $ if elem t ts then count j js else 0)
+    gatherFrom :: [Terrain] -> Job -> Double
+    gatherFrom ts j = gatherRatePerTick * if null $ intersect ts terrains then 0 else gatherRate
+      where
+        factor = sum $ fmap (toolFactor . pTool) $ filter ((==j) . pJob) ps
+        gatherRate = (*) factor $ fromIntegral $ count j $ filter (==j) $ fmap pJob ps
 
     gatherRatePerDay = 10
     gatherRatePerTick = perDayToPerTick gatherRatePerDay

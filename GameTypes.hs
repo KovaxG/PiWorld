@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 module GameTypes where
 
 import Data.Char
@@ -59,6 +60,24 @@ data Job = Civilian
          | StoneGatherer
          deriving (Show, Read, Eq)
 
+data Tool = EmptyHanded
+          | ChippedStone
+          | StoneTool
+          | CopperTool
+          | IronTool
+          | SteelTool
+          deriving (Show)
+
+toolFactor :: Tool -> Double
+toolFactor t = case t of
+  EmptyHanded -> 1.0
+  ChippedStone -> 2.0
+  StoneTool -> 3.0
+  CopperTool -> 4.0
+  IronTool -> 4.5
+  SteelTool -> 4.9
+
+
 newtype HungerMeter = HungerMeter { getHunger :: Double } deriving (Show, Eq, Ord)
 
 toHungerMeter :: Double -> HungerMeter
@@ -76,11 +95,12 @@ toHealthMeter d
   | otherwise = HealthMeter d
 
 data Person = Person {
-  pID :: ID,
-  pName :: Name,
-  pJob :: Job,
-  pHunger :: HungerMeter,
-  pHealth :: HealthMeter
+  pID :: !ID,
+  pName :: !Name,
+  pJob :: !Job,
+  pHunger :: !HungerMeter,
+  pHealth :: !HealthMeter,
+  pTool :: !Tool
 } deriving (Show)
 
 instance Eq Person where
@@ -94,14 +114,14 @@ data Event = NewVillage VillageName Location User [Name]
 newtype VillageName = VillageName { getVillageName :: String } deriving (Show)
 
 data Village = Village {
-  vID :: ID,
-  vUser :: User,
-  vCreated :: TickNr,
-  vName :: VillageName,
-  vLocation :: Location,
-  vInventory :: Inventory,
-  vVillagers :: [Person],
-  vDiscoveredTerrain :: Set Terrain
+  vID :: !ID,
+  vUser :: !User,
+  vCreated :: !TickNr,
+  vName :: !VillageName,
+  vLocation :: !Location,
+  vInventory :: !Inventory,
+  vVillagers :: ![Person],
+  vDiscoveredTerrain :: !(Set Terrain)
 } deriving (Show)
 
 showVillage v = getVillageName (vName v) ++ " " ++ show (vLocation v)
@@ -112,11 +132,11 @@ data Terrain = Grass
              deriving (Show, Eq, Ord)
 
 data GameState = GameState {
-  gTickNr :: TickNr,
-  gSize :: (Int, Int),
-  gTerrain :: Data.Map.Map Location Terrain,
-  gVillages :: [Village],
-  gPersonID :: Int
+  gTickNr :: !TickNr,
+  gSize :: !(Int, Int),
+  gTerrain :: !(Data.Map.Map Location Terrain),
+  gVillages :: ![Village],
+  gPersonID :: !Int
 } deriving (Show)
 
 showMap :: GameState -> String
