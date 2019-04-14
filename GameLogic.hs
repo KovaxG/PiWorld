@@ -189,7 +189,7 @@ explorerLogic terrain = do
 
 updateInventory :: [Terrain] -> [Person] -> State Inventory ()
 updateInventory terrains ps = do
-  modify $ addResource Wood $ trace (show $ gatherFrom [Forest] Woodcutter) $ gatherFrom [Forest] Woodcutter
+  modify $ addResource Wood $ gatherFrom [Forest] Woodcutter
   modify $ addResource Stone $ gatherFrom [RockyHill] StoneGatherer
   modify $ addResource Food $ gatherFrom [Grass, Forest] Hunter
   where
