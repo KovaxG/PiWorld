@@ -2,119 +2,30 @@
 module GameTypes where
 
 import Data.Char
-import Data.List
-import Data.Map
+import Data.List as List hiding (lookup)
+import Data.Map as Map
 import Data.Maybe
 import Data.Set
+import Prelude hiding (lookup)
 import System.Random
 
 import Utils
 
-type Location = (Int, Int)
-type TickNr = Int
-type Name = String
-
-newtype UserName = UserName { getUserName :: String } deriving (Show, Eq)
-newtype Password = Password String deriving (Show, Eq)
-
-data User = User {
-  uID :: ID,
-  uName :: UserName,
-  uPass ::  Password
-}
-
-instance Show User where
-  show user = getUserName $ uName user
-
-instance Eq User where
-  u1 == u2 = uID u1 == uID u2
-
-data Resource = Wood
-              | Food
-              | Stone
-              deriving (Show, Eq, Ord)
-
-type Inventory = Map Resource Double
-
-emptyInventory :: Inventory
-emptyInventory = Data.Map.empty
-
-fromInventory :: Inventory -> Resource -> Double
-fromInventory inv res = fromMaybe 0.0 $ Data.Map.lookup res inv
-
-updateResource :: Inventory -> Resource -> Double -> Inventory
-updateResource inv res qty = Data.Map.insert res qty inv
-
-
-addResource :: Resource -> Double -> Inventory -> Inventory
-addResource res qty inv =
-  maybe notFound found $ Data.Map.lookup res inv
-  where
-    notFound = Data.Map.insert res qty inv
-    found q = Data.Map.insert res (q + qty) inv
-
-data Job = Civilian
-         | Woodcutter
-         | Explorer
-         | Hunter
-         | StoneGatherer
-         deriving (Show, Read, Eq)
-
-data Tool = EmptyHanded
-          | ChippedStone
-          | StoneTool
-          | CopperTool
-          | IronTool
-          | SteelTool
-          deriving (Show)
-
-toolFactor :: Tool -> Double
-toolFactor t = case t of
-  EmptyHanded -> 1.0
-  ChippedStone -> 2.0
-  StoneTool -> 3.0
-  CopperTool -> 4.0
-  IronTool -> 4.5
-  SteelTool -> 4.9
-
-
-newtype HungerMeter = HungerMeter { getHunger :: Double } deriving (Show, Eq, Ord)
-
-toHungerMeter :: Double -> HungerMeter
-toHungerMeter d
-  | d >= 100.0 = HungerMeter 100.0
-  | d <= 0 = HungerMeter 0
-  | otherwise = HungerMeter d
-
-newtype HealthMeter = HealthMeter { getHealth :: Double } deriving (Show, Eq, Ord)
-
-toHealthMeter :: Double -> HealthMeter
-toHealthMeter d
-  | d >= 100.0 = HealthMeter 100.0
-  | d <= 0 = HealthMeter 0
-  | otherwise = HealthMeter d
-
-data Person = Person {
-  pID :: !ID,
-  pName :: !Name,
-  pJob :: !Job,
-  pHunger :: !HungerMeter,
-  pHealth :: !HealthMeter,
-  pTool :: !Tool
+data GameState = GameState {
+  gTickNr :: !TickNr,
+  gSize :: !(Int, Int),
+  gTerrain :: !(Map Location Terrain),
+  gVillages :: ![Village],
+  gPersonID :: !Int
 } deriving (Show)
 
-instance Eq Person where
-  p1 == p2 = pID p1 == pID p2
+type TickNr = Int
+type Location = (Int, Int)
 
-data Event = NewVillage VillageName Location User [Name]
-           | Tick
-           | ChangeJobOfVillager ID Job
-           deriving (Show)
-
-newtype VillageName = VillageName { getVillageName :: String } deriving (Show)
-
-data BuildingSize = Tiny | Small | Normal | Big deriving (Show)
-data Building = Building BuildingSize deriving (Show)
+data Terrain = Grass
+             | Forest
+             | RockyHill
+             deriving (Show, Eq, Ord)
 
 data Village = Village {
   vID :: !ID,
@@ -128,55 +39,138 @@ data Village = Village {
   vDiscoveredTerrain :: !(Set Terrain)
 } deriving (Show)
 
-showVillage v = getVillageName (vName v) ++ " " ++ show (vLocation v)
+data User = User {
+  uID :: ID,
+  uName :: UserName,
+  uPass ::  Password
+}
 
-data Terrain = Grass
-             | Forest
-             | RockyHill
-             deriving (Show, Eq, Ord)
+instance Show User where
+  show user = getUserName $ uName user
 
-data GameState = GameState {
-  gTickNr :: !TickNr,
-  gSize :: !(Int, Int),
-  gTerrain :: !(Data.Map.Map Location Terrain),
-  gVillages :: ![Village],
-  gPersonID :: !Int
+instance Eq User where
+  u1 == u2 = uID u1 == uID u2
+
+newtype UserName = UserName { getUserName :: String } deriving (Show, Eq)
+newtype Password = Password String deriving (Show, Eq)
+
+newtype VillageName = VillageName { getVillageName :: String } deriving (Show)
+
+type Inventory = Map Resource Double
+
+data Person = Person {
+  pID :: !ID,
+  pName :: !Name,
+  pJob :: !Job,
+  pHunger :: !HungerMeter,
+  pHealth :: !HealthMeter,
+  pTool :: !Tool
 } deriving (Show)
+
+instance Eq Person where
+  p1 == p2 = pID p1 == pID p2
+
+type Name = String
+
+data Job = Civilian
+         | Woodcutter
+         | Explorer
+         | Hunter
+         | StoneGatherer
+         deriving (Show, Read, Eq)
+
+newtype HungerMeter = HungerMeter { getHunger :: Double } deriving (Show, Eq, Ord)
+
+toHungerMeter :: Double -> HungerMeter
+toHungerMeter = HungerMeter . saturate 0 100
+
+newtype HealthMeter = HealthMeter { getHealth :: Double } deriving (Show, Eq, Ord)
+
+toHealthMeter :: Double -> HealthMeter
+toHealthMeter = HealthMeter . saturate 0 100
+
+data Tool = EmptyHanded
+          | ChippedStone
+          | StoneTool
+          | CopperTool
+          | IronTool
+          | SteelTool
+          deriving (Show)
+
+data BuildingSize = Tiny | Small | Normal | Big deriving (Show)
+data Building = Building BuildingSize deriving (Show)
+
+data Event = NewVillage VillageName Location User [Name]
+           | Tick
+           | ChangeJobOfVillager ID Job
+           deriving (Show)
+
+data Resource = Wood
+              | Food
+              | Stone
+              deriving (Show, Eq, Ord)
+
+emptyInventory :: Inventory
+emptyInventory = Map.empty
+
+fromInventory :: Inventory -> Resource -> Double
+fromInventory inv res = fromMaybe 0.0 $ lookup res inv
+
+updateResource :: Inventory -> Resource -> Double -> Inventory
+updateResource inv res qty = Map.insert res qty inv
+
+addResource :: Resource -> Double -> Inventory -> Inventory
+addResource res qty inv =
+  maybe notFound found $ lookup res inv
+  where
+    notFound = Map.insert res qty inv
+    found q = Map.insert res (q + qty) inv
+
+toolFactor :: Tool -> Double
+toolFactor t = case t of
+  EmptyHanded -> 1.0
+  ChippedStone -> 2.0
+  StoneTool -> 3.0
+  CopperTool -> 4.0
+  IronTool -> 4.5
+  SteelTool -> 4.9
 
 showMap :: GameState -> String
 showMap gameState =
-  concat
-    $ Data.List.map (++"\n")
+  concatMap (++"\n")
     $ Utils.split x
-    [putCity (i, j) $ draw $ fromJust $ Data.Map.lookup (i, j) gameMap
-      | i <- [1 .. x], j <- [1 .. y]]
+    [
+      putCity (i, j)
+      $ draw
+      $ fromJust
+      $ lookup (i, j) (gTerrain gameState)
+      | i <- [1 .. x], j <- [1 .. y]
+    ]
   where
     (x, y) = gSize gameState
-    gameMap = gTerrain gameState
-    draw Grass = ' '
-    draw Forest = '|'
-    draw RockyHill = '*'
+    draw t = case t of
+      Grass -> ' '
+      Forest -> '|'
+      RockyHill -> '*'
     putCity loc c =
-      if any (==loc) $ Data.List.map vLocation (gVillages gameState)
+      if any (==loc) $ fmap vLocation (gVillages gameState)
       then 'O'
       else c
 
-
 villagesOf :: GameState -> User -> [Village]
-villagesOf gameState user =
-  Data.List.filter ((== user) . vUser)  $ gVillages gameState
+villagesOf gameState user = List.filter ((== user) . vUser) $ gVillages gameState
 
 getVillage :: GameState -> ID -> Maybe Village
 getVillage gameState id = find ((==id) . vID) . gVillages $ gameState
 
 nameGenerator :: IO Name
 nameGenerator = do
-  nr <- lowerBound 2 . swap mod 5 <$> randomIO :: IO Int
+  nr <- lowerBound 2 . flip mod 5 <$> randomIO :: IO Int
   result <- concat <$> traverse getSz [1 .. nr]
   return $ capitalise result
   where
+    syllables = ["ga", "la","gog", "mo", "ra", "la", "pet", "ki", "hu", "ri", "ro", "er"]
     capitalise (c:rest) = toUpper c : rest
     getSz _ = do
-      index <- swap mod (length sz) <$> randomIO
-      return $ sz !! index
-    sz = ["ga", "la","gog", "mo", "ra", "la", "pet", "ki", "hu", "ri", "ro", "er"]
+      index <- flip mod (length syllables) <$> randomIO
+      return $ syllables !! index
