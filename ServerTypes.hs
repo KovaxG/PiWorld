@@ -10,7 +10,7 @@ type IP = String
 data GetRequest = Get String (Map String String) deriving (Show)
 
 data Response = DefaultVillageView VillageName UserName Location
-              | OwnedVillageView VillageName Location [(Name, Job, ID, HungerMeter, HealthMeter)] Inventory
+              | OwnedVillageView VillageName Location [Person] [Building] Inventory
               | VillageNotFound
               | Unrecognised
               | LogoutPage

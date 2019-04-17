@@ -113,6 +113,9 @@ data Event = NewVillage VillageName Location User [Name]
 
 newtype VillageName = VillageName { getVillageName :: String } deriving (Show)
 
+data BuildingSize = Tiny | Small | Normal | Big deriving (Show)
+data Building = Building BuildingSize deriving (Show)
+
 data Village = Village {
   vID :: !ID,
   vUser :: !User,
@@ -121,6 +124,7 @@ data Village = Village {
   vLocation :: !Location,
   vInventory :: !Inventory,
   vVillagers :: ![Person],
+  vBuildings :: ![Building],
   vDiscoveredTerrain :: !(Set Terrain)
 } deriving (Show)
 

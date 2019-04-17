@@ -98,6 +98,7 @@ addNewVillage name location user names = do
     vLocation = location,
     vInventory = addResource Food 16.0 emptyInventory,
     vVillagers = newPeople,
+    vBuildings = [Building Normal],
     vDiscoveredTerrain = Data.Set.empty
   }
   modify $ \s -> s { gVillages = newVillage : villages }

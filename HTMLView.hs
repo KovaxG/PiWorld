@@ -24,7 +24,7 @@ toHTML (DefaultVillageView villageName userName location) =
     )
   )
 
-toHTML (OwnedVillageView villageName location  villagers inventory) =
+toHTML (OwnedVillageView villageName location  villagers buildings inventory) =
   htmlWith (title $ getVillageName villageName) (
     addBreak ("Welcome to your village, " ++ getVillageName villageName ++ ".")
     |> addBreak ("This village is at " ++ show location)
@@ -32,6 +32,8 @@ toHTML (OwnedVillageView villageName location  villagers inventory) =
     |> form "/person" (
       addBreak . personButton =<< villagers
     )
+    |> addBreak "Buildings:"
+    |> (addBreak . show =<< buildings)
     |> addBreak ""
     |> addBreak ("Inventory: " ++ show inventory)
     |> form "/" (
@@ -40,12 +42,12 @@ toHTML (OwnedVillageView villageName location  villagers inventory) =
     )
   )
   where
-    personButton (name, job, id, hunger, health) =
-      name
-      ++ " (" ++ show job ++ ") "
-      ++ " Hunger:" ++ show (getHunger hunger)
-      ++ " Hitpoints: " ++ show (getHealth health)
-      ++ input "submit" (show id) "Job"
+    personButton v =
+      pName v
+      ++ " (" ++ show (pJob v) ++ ") "
+      ++ " Hunger:" ++ show (getHunger $ pHunger v)
+      ++ " Hitpoints: " ++ show (getHealth $ pHealth v)
+      ++ input "submit" (show $ pID v) "Job"
 
 toHTML LogoutPage =
   htmlWith (title "PiWorld Logout") (

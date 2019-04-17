@@ -54,11 +54,10 @@ handleRequest _ _ _ gameStateVar _ (Just user) (ViewVillage id) = do
   gameState <- readMVar gameStateVar
   return $ maybe notFound villageFound $ getVillage gameState id
   where
-    personData p = (pName p, pJob p, pID p, pHunger p, pHealth p)
     notFound = VillageNotFound
     villageFound village =
       if vUser village == user
-      then OwnedVillageView (vName village) (vLocation village) (personData <$> vVillagers village) (vInventory village)
+      then OwnedVillageView (vName village) (vLocation village) (vVillagers village) (vBuildings village) (vInventory village)
       else DefaultVillageView (vName village) (uName $ vUser village) (vLocation village)
 
 handleRequest loginDB ip _ _ _ _ Logout = do
