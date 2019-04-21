@@ -1,3 +1,12 @@
+{-
+  This is the source code for the web real time stratgy game, PiWorld.
+  It was written to be a hobby project to see how a big project looks
+  like in Haskell, and also to learn about web development.
+  You are free to look at the code and use it as you see fit, as long
+  as it is not for profit. If it is please contact the author, KovaxG
+  on gitthub.
+  Author(s): KovaxG
+-}
 import Control.Concurrent
 import Data.Maybe
 
@@ -8,8 +17,14 @@ import MessageQueue (newEmptyQueue, pushMessage, popMessages, MessageQueue)
 import Server (runServer)
 import UserDB (newUserDB, addUser, getUser)
 
+version = "v" ++ show bigversion ++ "." ++ show subversion
+  where
+    bigversion = 0
+    subversion = 1
+
 main :: IO ()
 main = do
+  putStrLn $ "Launching PiWorld " ++ version
   queueVar <- newEmptyQueue
   gameStateVar <- newGameStateVar
   loginDB <- newLoginDB
