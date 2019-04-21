@@ -8,9 +8,9 @@ import Control.Concurrent.MVar
 import Control.DeepSeq
 import Control.Monad.State
 import Data.List
-import Data.Map hiding (foldl, (\\), filter, null)
+import Data.Map hiding (foldl, (\\), filter, null, take)
 import Data.Maybe
-import Data.Set hiding (foldl, (\\), filter, null)
+import Data.Set hiding (foldl, (\\), filter, null, take)
 import Debug.Trace
 import System.Time.Extra
 
