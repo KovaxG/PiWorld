@@ -58,3 +58,6 @@ saturate lower upper value
   | value >= upper = upper
   | value <= lower = lower
   | otherwise      = value
+
+member :: Eq a => a -> [(a,b)] -> Bool
+member a = elem a . fmap fst

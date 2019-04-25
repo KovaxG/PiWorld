@@ -13,9 +13,15 @@ type HTML = String
 
 startHtml = tag "!DOCTYPE html"
 
-form :: String -> HTML -> HTML
-form action body =
-  tag ("form action=" ++ action)
+getForm :: String -> HTML -> HTML
+getForm action body =
+  tag ("form action=\"" ++ action ++ "\"")
+  |> body
+  |> endTag "form"
+
+postForm :: String -> HTML -> HTML
+postForm action body =
+  tag ("form action=\"" ++ action ++ "\" method=\"post\"")
   |> body
   |> endTag "form"
 

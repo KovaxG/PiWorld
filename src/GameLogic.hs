@@ -219,7 +219,7 @@ areaOf n (x, y) = [(i, j) | i <- [x-n.. x+n], j <- [y-n .. y+n]]
 updateTickNr :: State GameState ()
 updateTickNr = do
   curTick <- gets gTickNr
-  modify (\s -> s { gTickNr = curTick + 1 } )
+  modify $ \s -> s { gTickNr = curTick + 1 }
 
 getLastId :: State GameState ID
 getLastId = gets $ fromMaybe 0 . safeMax . fmap vID . gVillages

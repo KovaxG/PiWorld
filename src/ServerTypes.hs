@@ -16,7 +16,9 @@ import Utils
 
 type IP = String
 
-data GetRequest = Get String (Map String String) deriving (Show)
+data GetRequest = Get String [(String, String)]
+                | Post [(String, String)]
+                deriving (Show)
 
 data Response = DefaultVillageView VillageName UserName Location
               | OwnedVillageView VillageName Location [Person] [Building] Inventory

@@ -27,7 +27,7 @@ toHTML (DefaultVillageView villageName userName location) =
     addBreak ("Welcome to " ++ getVillageName villageName ++ ".")
     |> addBreak ("This village is managed by " ++ getUserName userName)
     |> addBreak ("This village is at " ++ show location)
-    |> form "/" (
+    |> getForm "/" (
       addBreak "Click here to return to the main page."
       |> button "Main Page"
     )
@@ -38,14 +38,14 @@ toHTML (OwnedVillageView villageName location  villagers buildings inventory) =
     addBreak ("Welcome to your village, " ++ getVillageName villageName ++ ".")
     |> addBreak ("This village is at " ++ show location)
     |> addBreak ("This town has a population of " ++ show (length villagers))
-    |> form "/person" (
+    |> getForm "/person" (
       addBreak . personButton =<< villagers
     )
     |> addBreak "Buildings:"
     |> (addBreak . show =<< buildings)
     |> addBreak ""
     |> addBreak ("Inventory: " ++ show inventory)
-    |> form "/" (
+    |> getForm "/" (
       addBreak "Click here to return to the main page."
       |> button "Main Page"
     )
@@ -61,7 +61,7 @@ toHTML (OwnedVillageView villageName location  villagers buildings inventory) =
 toHTML LogoutPage =
   htmlWith (title "PiWorld Logout") (
     addBreak "Logout Successful"
-    |> form "/" (
+    |> getForm "/" (
       addBreak "Click here to return to the main page."
       |> button "Main Page"
     )
@@ -70,17 +70,17 @@ toHTML LogoutPage =
 toHTML (Overview userName villages) =
   htmlWith (title "PiWorld Main Menu") (
     addBreak ("Hello, " ++ getUserName userName)
-    |> form "" (
+    |> getForm "" (
       addBreak "Here are your villages"
       |> (addBreak . villageAndButton =<< villages)
     )
     |> addBreak ""
-    |> form "/map" (
+    |> getForm "/map" (
       addBreak "View world map: "
       |> button "World Map"
     )
     |> addBreak ""
-    |> form "/logout" (
+    |> getForm "/logout" (
       "Click here to log out:"
       |> button "Log Out"
     )
@@ -90,7 +90,7 @@ toHTML (Overview userName villages) =
 
 toHTML MainPage =
   htmlWith (title "PiWorld Main Menu") (
-    form "/login" (
+    getForm "/login" (
       "You are not logged in, you can do that here:"
       |> addBreak ""
       |> button "Log In"
@@ -100,7 +100,7 @@ toHTML MainPage =
 toHTML (LoginSuccess userName) =
   htmlWith (title "PiWorld Login") (
     addBreak ( "Welcome " ++ getUserName userName )
-    |> form "/" (
+    |> getForm "/" (
       addBreak ("Click here to go to main view: ")
       |> button "Main Page"
     )
@@ -115,7 +115,7 @@ toHTML (AlreadyLoggedIn userName) =
 
 toHTML LoginScreen =
   htmlWith (title "PiWorld Login") (
-    form "" (
+    postForm "" (
       addBreak "Login"
       |> "username: "
       |> input "text" "username" ""
@@ -129,7 +129,7 @@ toHTML LoginScreen =
 
 toHTML (WorldMapScreen villages) =
   htmlWith (title "PiWorld Worldmap") (
-    form "" (
+    getForm "" (
       addBreak "Game Map"
       |> (addBreak . villageAndButton =<< villages)
     )
@@ -147,7 +147,7 @@ toHTML (PersonJobView name id job availableJobs) =
   htmlWith (title ("Job of " ++ name) ) (
     addBreak ("Name: " ++ name)
     |> addBreak ("Current Job: " ++ show job)
-    |> form "" (
+    |> getForm "" (
       addBreak . toInputs =<< availableJobs
     )
   )
@@ -157,7 +157,7 @@ toHTML (PersonJobView name id job availableJobs) =
 toHTML JobChanged =
   htmlWith (title ("Great Success") ) (
     addBreak "Job changed."
-    |> form "/" (
+    |> getForm "/" (
       addBreak ("Click here to go to main view: ")
       |> button "Main Page"
     )

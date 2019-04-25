@@ -15,8 +15,8 @@ import Control.Concurrent.MVar
 import Data.Bifunctor
 import Data.ByteString.Char8 (pack, unpack)
 import Data.Either.Extra
-import Data.List
-import Data.Map
+import Data.List as List
+import Data.Map as Map hiding (member)
 import Data.Maybe
 import Data.Set (toList)
 import Debug.Trace
@@ -66,7 +66,11 @@ handleRequest _ _ _ gameStateVar _ (Just user) (ViewVillage id) = do
     notFound = VillageNotFound
     villageFound village =
       if vUser village == user
-      then OwnedVillageView (vName village) (vLocation village) (vVillagers village) (vBuildings village) (vInventory village)
+      then OwnedVillageView (vName village)
+                            (vLocation village)
+                            (vVillagers village)
+                            (vBuildings village)
+                            (vInventory village)
       else DefaultVillageView (vName village) (uName $ vUser village) (vLocation village)
 
 handleRequest loginDB ip _ _ _ _ Logout = do
@@ -136,49 +140,74 @@ ipOf :: SockAddr -> String
 ipOf = takeWhile (/= ':') . show
 
 parseGetRequest :: String -> Either String GetRequest
-parseGetRequest = first show . parse rule "Parsing Request"
+parseGetRequest = first show . parse rule "Parsing Request" . removeCR
   where
-    rule = choice [try getWithVars, try pureGet]
+    removeCR :: String -> String
+    removeCR = List.filter (/='\r')
+
+    rule = choice [try getWithVars, try pureGet, try post]
 
     pureGet = do
       string "GET /"
       content <- many alphaNum
       spaces
-      return $ Get content empty
+      return $ Get content []
+
+    nonEmptyLine = alphaNum >> many (noneOf "\n\r")
+
+    post = do
+      string "POST"
+      _ <- many (noneOf "\n\r")
+      newline
+      _ <- sepEndBy nonEmptyLine newline
+      newline
+      tuples <- sepBy tuple (char '&')
+      return $ Post tuples
 
     getWithVars = do
       string "GET /"
       content <- many alphaNum
       char '?'
-      tuples <- sepBy (variable) (char '&')
+      tuples <- sepBy tuple (char '&')
       spaces
-      return $ Get content $ fromList tuples
+      return $ Get content tuples
 
-    variable = do
-      key <- many alphaNum
+    tuple = do
+      key <- many (noneOf "=& ")
       char '='
-      value <- many alphaNum
+      value <- many (noneOf "=& ")
       return (key, value)
 
 parseRequest :: GetRequest -> Either String Request
+parseRequest req@(Post vars)
+  | member userName vars && member passWord vars =
+    let name = UserName $ fromJust $ List.lookup userName vars
+        pass = Password $ fromJust $ List.lookup passWord vars
+    in Right $ Login name pass
+  | otherwise = Left $ show req ++ " not supported."
+  where
+    userName = "username"
+    passWord = "password"
+
 parseRequest req@(Get main vars)
   | main == "" && hasKeys && isID firstKey = Right $ ViewVillage (read firstKey)
   | main == "map" && hasKeys && isID firstKey = Right $ ViewVillage (read firstKey)
   | main == "" = Right MainMenu
   | main == "map" = Right WorldMap
-  | main == "login" && length (keys vars) < 2 = Right LoginPage
+  | main == "login" && length vars < 2 = Right LoginPage
   | main == "login" && member userName vars && member passWord vars =
-    let name = UserName $ fromJust $ Data.Map.lookup userName vars
-        pass = Password $ fromJust $ Data.Map.lookup passWord vars
+    let name = UserName $ fromJust $ List.lookup userName vars
+        pass = Password $ fromJust $ List.lookup passWord vars
     in Right $ Login name pass
   | main == "logout" = Right Logout
   | main == "person" && hasKeys && isID firstKey && firstValue == "Job" = Right $ JobMenu (read firstKey)
-  | main == "person" && hasKeys && isID firstKey && isJob firstValue = Right $ JobChange (read firstKey) (fromJust $ safeRead firstValue)
+  | main == "person" && hasKeys && isID firstKey && isJob firstValue =
+    Right $ JobChange (read firstKey) (fromJust $ safeRead firstValue)
   | otherwise = Left $ show req ++ " not supported."
   where
     isJob s = isJust $ (safeRead s :: Maybe Job)
-    hasKeys = length (keys vars) > 0
-    firstKey = head $ keys vars
-    firstValue = fromJust (Data.Map.lookup firstKey vars)
+    hasKeys = length vars > 0
+    firstKey = fst $ head vars
+    firstValue = fromJust (List.lookup firstKey vars)
     userName = "username"
     passWord = "password"
