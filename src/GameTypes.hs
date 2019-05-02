@@ -67,13 +67,22 @@ newtype VillageName = VillageName { getVillageName :: String } deriving (Show)
 
 type Inventory = Map Resource Double
 
+data Status = Ok
+            | Starving
+            | Healing
+            | GettingHungry
+            | GettingLessHungry
+            | Dead
+            deriving (Show, Eq)
+
 data Person = Person {
   pID :: !ID,
   pName :: !Name,
   pJob :: !Job,
   pHunger :: !HungerMeter,
   pHealth :: !HealthMeter,
-  pTool :: !Tool
+  pTool :: !Tool,
+  pStatus :: !Status
 } deriving (Show)
 
 instance Eq Person where

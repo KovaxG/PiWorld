@@ -9,6 +9,7 @@
 -}
 module Utils where
 
+import Control.Monad.State
 import Data.Char
 import Data.List
 import Data.Maybe
@@ -61,3 +62,6 @@ saturate lower upper value
 
 member :: Eq a => a -> [(a,b)] -> Bool
 member a = elem a . fmap fst
+
+mapWithState :: [a] -> b -> (a -> b -> (a, b)) -> ([a], b)
+mapWithState as b f = runState (traverse (state . f) as) b

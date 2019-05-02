@@ -56,7 +56,8 @@ toHTML (OwnedVillageView villageName location  villagers buildings inventory) =
       ++ " (" ++ show (pJob v) ++ ") "
       ++ " Hunger:" ++ show (getHunger $ pHunger v)
       ++ " Hitpoints: " ++ show (getHealth $ pHealth v)
-      ++ input "submit" (show $ pID v) "Job"
+      ++ " Status: " ++ show (pStatus v)
+      ++ " " ++ input "submit" (show $ pID v) "Job"
 
 toHTML LogoutPage =
   htmlWith (title "PiWorld Logout") (

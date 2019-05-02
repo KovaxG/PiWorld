@@ -98,7 +98,7 @@ addNewVillage name location user names = do
   villages <- gets gVillages
   lastId <- getLastId
   personId <- gets gPersonID
-  let newPeople = zipWith (\n i -> Person i n Civilian (HungerMeter 100.0) (HealthMeter 100.0) EmptyHanded) names [personId ..]
+  let newPeople = zipWith (\n i -> Person i n Civilian (HungerMeter 100.0) (HealthMeter 100.0) EmptyHanded Ok) names [personId ..]
   let newVillage = Village {
     vID = (lastId + 1),
     vUser = user,
@@ -133,7 +133,8 @@ needsLogic = do
   villagers <- gets vVillagers
   inv <- gets vInventory
   let food = fromInventory inv Food
-  let (newFood, newVillagers) = foldl rule (food, []) villagers
+  let (villagersWithUpdatedStatuses, newFood) = updateStatuses villagers food
+  let newVillagers = fmap updateAccordingToStatus villagersWithUpdatedStatuses
   modify $ \v -> v { vVillagers = newVillagers }
   let newInv = updateResource inv Food newFood
   modify $ \v -> v { vInventory = newInv }
@@ -153,25 +154,46 @@ needsLogic = do
     damageRatePerDay = 20
     damageRatePerTick = perDayToPerTick damageRatePerDay
 
-    rule :: (Double, [Person]) -> Person -> (Double, [Person])
-    rule (food, vs) v
-      | food >= eatingRatePerTick && pHunger v >= (HungerMeter 100.0) =
-        let health = getHealth $ pHealth v
-            v' = v { pHealth = toHealthMeter (health + healingRatePerTick) }
-        in (food - eatingRatePerTick, v' : vs)
-      | food >= eatingRatePerTick =
-        let hunger = getHunger $ pHunger v
-            v' = v { pHunger = toHungerMeter (hunger + hungerRecoveryRatePerTick) }
-        in (food - eatingRatePerTick, v' : vs)
-      | pHunger v > (HungerMeter 0.0) =
-        let hunger = getHunger $ pHunger v
-            v' = v { pHunger =  toHungerMeter (hunger - hungerRatePerTick) }
-        in (food, v' : vs)
-      | pHealth v > (HealthMeter 0.0) =
-        let health = getHealth $ pHealth v
-            v' = v { pHealth = toHealthMeter (health - damageRatePerTick) }
-        in (food, v' : vs)
-      | otherwise = (food, vs)
+    updateAccordingToStatus :: Person -> Person
+    updateAccordingToStatus p =
+      case pStatus p of
+        Ok -> p
+        Healing -> p { pHealth = toHealthMeter (health + healingRatePerTick) }
+        GettingLessHungry -> p { pHunger = toHungerMeter (hunger + hungerRecoveryRatePerTick) }
+        GettingHungry -> p { pHunger =  toHungerMeter (hunger - hungerRatePerTick) }
+        Starving -> p { pHealth = toHealthMeter (health - damageRatePerTick) }
+        Dead -> p
+      where
+        hunger = getHunger $ pHunger p
+        health = getHealth $ pHealth p
+
+    updateStatuses :: [Person] -> Double -> ([Person], Double)
+    updateStatuses ps foodStock = mapWithState ps foodStock $ \p food ->
+      let (status', food') = updateStatus (pStatus p) food (pHunger p) (pHealth p)
+      in ( p { pStatus = status' } , food')
+
+    updateStatus :: Status -> Double -> HungerMeter -> HealthMeter -> (Status, Double)
+    updateStatus Ok food _ _
+      | food >= eatingRatePerTick = (Ok, food - eatingRatePerTick)
+      | otherwise = (GettingHungry, 0.0)
+    updateStatus GettingHungry food hunger _
+      | food >= eatingRatePerTick = (GettingLessHungry, food - eatingRatePerTick)
+      | hunger == (HungerMeter 0.0) = (Starving, 0.0)
+      | otherwise = (GettingHungry, 0.0)
+    updateStatus GettingLessHungry food hunger health
+      | food < eatingRatePerTick = (GettingHungry, 0.0)
+      | hunger == (HungerMeter 100.0) && health < (HealthMeter 100.0) = (Healing, food - eatingRatePerTick)
+      | hunger == (HungerMeter 100.0) = (Ok, food - eatingRatePerTick)
+      | otherwise = (GettingLessHungry, food - eatingRatePerTick)
+    updateStatus Starving food hunger health
+      | food >= eatingRatePerTick = (GettingLessHungry, food - eatingRatePerTick)
+      | health == (HealthMeter 0.0) = (Dead, 0.0)
+      | otherwise = (Starving, 0.0)
+    updateStatus Healing food _ health
+      | food < eatingRatePerTick = (GettingHungry, 0.0)
+      | health == (HealthMeter 100.0) = (Ok, food - eatingRatePerTick)
+      | otherwise = (Healing, food - eatingRatePerTick)
+    updateStatus Dead food _ _ = (Dead, food)
 
 gathererLogic :: Data.Map.Map Location Terrain -> State Village ()
 gathererLogic terrain = do
