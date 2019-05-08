@@ -46,7 +46,8 @@ runServer gameStateVar messageQueue loginDB userDB =
     putStrLn $ "<-- " ++ show validRequestEither
     putStrLn $ "--> " ++ show response
     putStrLn ""
-    send socket $ pack (toHTML response)
+    html <- toHTML response
+    send socket $ pack html
     where
       unrecognisedRequest _ = return Unrecognised
 

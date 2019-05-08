@@ -65,3 +65,46 @@ member a = elem a . fmap fst
 
 mapWithState :: [a] -> b -> (a -> b -> (a, b)) -> ([a], b)
 mapWithState as b f = runState (traverse (state . f) as) b
+
+interpolateString :: [(String, String)] -> String -> String
+interpolateString dl =
+  concat . fmap (\w -> if startsWith '$' w then replace w else w) . splitVariables '$'
+  where
+    replace (_:w) = (++end)  $ fromMaybe "Nothing" $ lookup w' dl
+      where (w', end) = span isAlphaNum w
+
+splitVariables :: Char -> String -> [String]
+splitVariables c s
+  | cont == "" = [s]
+  | otherwise = start : (c : var) : splitVariables c rest
+  where
+    (var, rest) = span isAlphaNum $ tail cont
+    (start, cont) = span (/=c) s
+
+startsWith :: (Eq a) => a -> [a] -> Bool
+startsWith a [] = False
+startsWith a (x:_) = a == x
+
+sameElements :: (Eq a) => [a] -> [a] -> Bool
+sameElements [] [] = True
+sameElements [] _ = False
+sameElements _ [] = False
+sameElements a b = null $ a \\ b
+
+interpolateList :: [([String], [[String]])] -> String -> String
+interpolateList dl = unlines . fmap processLine . lines
+  where
+    processLine :: String -> String
+    processLine line
+      | elem '#' line = (=<<) ((++"\n") . concat . merge list) $ fromJust $ flip lookup dl vars
+      | otherwise = line
+      where
+        vars = map tail $ filter (startsWith '#') list
+        list = splitVariables '#' line
+
+    merge :: [String] -> [String] -> [String]
+    merge as bs = fst $ foldl rule ([], bs) as
+      where
+        rule (acc, bs) a
+          | startsWith '#' a = (acc ++ [head bs], tail bs)
+          | otherwise = (acc ++ [a], bs)

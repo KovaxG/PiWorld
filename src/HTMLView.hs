@@ -12,54 +12,57 @@ module HTMLView where
 import GameTypes
 import MyHTML
 import ServerTypes
+import Utils
+
+toPath :: String -> String
+toPath s = "src/views/" ++ s ++ ".html"
 
 htmlWith :: String -> String -> HTML
 htmlWith headContent bodyContent =
   startHtml |> html (hed headContent |> body bodyContent)
 
-toHTML :: Response -> HTML
-toHTML Unrecognised = ""
+toHTML :: Response -> IO HTML
+toHTML Unrecognised = return ""
 
-toHTML VillageNotFound = "No such village found."
+toHTML VillageNotFound = return "No such village found."
 
-toHTML (DefaultVillageView villageName userName location) =
-  htmlWith (title $ getVillageName villageName) (
-    addBreak ("Welcome to " ++ getVillageName villageName ++ ".")
-    |> addBreak ("This village is managed by " ++ getUserName userName)
-    |> addBreak ("This village is at " ++ show location)
-    |> getForm "/" (
-      addBreak "Click here to return to the main page."
-      |> button "Main Page"
-    )
-  )
-
-toHTML (OwnedVillageView villageName location  villagers buildings inventory) =
-  htmlWith (title $ getVillageName villageName) (
-    addBreak ("Welcome to your village, " ++ getVillageName villageName ++ ".")
-    |> addBreak ("This village is at " ++ show location)
-    |> addBreak ("This town has a population of " ++ show (length villagers))
-    |> getForm "/person" (
-      addBreak . personButton =<< villagers
-    )
-    |> addBreak "Buildings:"
-    |> (addBreak . show =<< buildings)
-    |> addBreak ""
-    |> addBreak ("Inventory: " ++ show inventory)
-    |> getForm "/" (
-      addBreak "Click here to return to the main page."
-      |> button "Main Page"
-    )
-  )
+toHTML (DefaultVillageView villageName userName location) = do
+  contents <- readFile $ toPath "DefaultVillageView"
+  return $ interpolateString vars contents
   where
-    personButton v =
-      pName v
-      ++ " (" ++ show (pJob v) ++ ") "
-      ++ " Hunger:" ++ show (getHunger $ pHunger v)
-      ++ " Hitpoints: " ++ show (getHealth $ pHealth v)
-      ++ " Status: " ++ show (pStatus v)
-      ++ " " ++ input "submit" (show $ pID v) "Job"
+    vars = [
+      ("villageName", getVillageName villageName),
+      ("userName", getUserName userName),
+      ("location", show location)]
 
-toHTML LogoutPage =
+toHTML (OwnedVillageView villageName location  villagers buildings inventory) = do
+  contents <- readFile $ toPath "OwnedVillageView"
+  return $ interpolateList lists $ interpolateString strings contents
+  where
+    strings = [
+      ("villageName", getVillageName villageName),
+      ("location", show location),
+      ("population", show $ length villagers),
+      ("inventory", show inventory)]
+
+    lists = [
+      (["buildings"], buildingList),
+      (["vName", "vJob", "vHunger", "vHealth", "vStatus", "vId"], personList)]
+
+    buildingList = fmap (pure . show) buildings
+    personList =
+      fmap (\v ->
+        fmap ($v) [
+          pName,
+          show . pJob,
+          show . getHunger . pHunger,
+          show . getHealth . pHealth,
+          show . pStatus,
+          show . pID
+          ]
+      ) villagers
+
+toHTML LogoutPage = return $
   htmlWith (title "PiWorld Logout") (
     addBreak "Logout Successful"
     |> getForm "/" (
@@ -68,7 +71,7 @@ toHTML LogoutPage =
     )
   )
 
-toHTML (Overview userName villages) =
+toHTML (Overview userName villages) = return $
   htmlWith (title "PiWorld Main Menu") (
     addBreak ("Hello, " ++ getUserName userName)
     |> getForm "" (
@@ -89,7 +92,7 @@ toHTML (Overview userName villages) =
   where
     villageAndButton (name, id) = getVillageName name ++ input "submit" (show id) "view"
 
-toHTML MainPage =
+toHTML MainPage = return $
   htmlWith (title "PiWorld Main Menu") (
     getForm "/login" (
       "You are not logged in, you can do that here:"
@@ -98,7 +101,7 @@ toHTML MainPage =
     )
   )
 
-toHTML (LoginSuccess userName) =
+toHTML (LoginSuccess userName) = return $
   htmlWith (title "PiWorld Login") (
     addBreak ( "Welcome " ++ getUserName userName )
     |> getForm "/" (
@@ -107,14 +110,14 @@ toHTML (LoginSuccess userName) =
     )
   )
 
-toHTML FailedLogin = "User does not exist"
+toHTML FailedLogin = return "User does not exist"
 
-toHTML (AlreadyLoggedIn userName) =
+toHTML (AlreadyLoggedIn userName) = return $
   htmlWith (title "PiWorld Login") (
     "You are already logged in as " ++ getUserName userName ++ ". Log off to sign in as another user."
   )
 
-toHTML LoginScreen =
+toHTML LoginScreen = return $
   htmlWith (title "PiWorld Login") (
     postForm "" (
       addBreak "Login"
@@ -128,7 +131,7 @@ toHTML LoginScreen =
     )
   )
 
-toHTML (WorldMapScreen villages) =
+toHTML (WorldMapScreen villages) = return $
   htmlWith (title "PiWorld Worldmap") (
     getForm "" (
       addBreak "Game Map"
@@ -139,12 +142,12 @@ toHTML (WorldMapScreen villages) =
     villageAndButton (name, location, id) =
       getVillageName name ++ " " ++ show location ++ " " ++ input "submit" (show id) "view"
 
-toHTML IllegalAction =
+toHTML IllegalAction = return $
   htmlWith (title "Criminal Scum") (
     "Hold right there criminal scum! You violated the law!"
   )
 
-toHTML (PersonJobView name id job availableJobs) =
+toHTML (PersonJobView name id job availableJobs) = return $
   htmlWith (title ("Job of " ++ name) ) (
     addBreak ("Name: " ++ name)
     |> addBreak ("Current Job: " ++ show job)
@@ -155,7 +158,7 @@ toHTML (PersonJobView name id job availableJobs) =
   where
     toInputs job = input "submit" (show id) (show job)
 
-toHTML JobChanged =
+toHTML JobChanged = return $
   htmlWith (title ("Great Success") ) (
     addBreak "Job changed."
     |> getForm "/" (
