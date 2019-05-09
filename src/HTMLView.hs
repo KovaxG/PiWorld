@@ -109,3 +109,5 @@ toHTML (PersonJobView name id job availableJobs) = do
     jobList = fmap (\j -> [show id, show j]) availableJobs
 
 toHTML JobChanged = readFile $ toPath "JobChangedView"
+
+toHTML (Image path) = return $ "Pretend this is an image: " ++ path

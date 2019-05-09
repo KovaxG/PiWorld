@@ -35,14 +35,20 @@ data Response = DefaultVillageView VillageName UserName Location
               | IllegalAction
               | PersonJobView Name ID Job [Job]
               | JobChanged
+              | Image String
               deriving (Show)
 
-data Request = MainMenu
-             | WorldMap
-             | LoginPage
-             | Login UserName Password
-             | Logout
-             | ViewVillage ID
-             | JobMenu ID
-             | JobChange ID Job
+data Request = Resource String
+             | GameRequest GameRequest
+             | NotSupported String
              deriving (Show)
+
+data GameRequest = MainMenu
+                 | WorldMap
+                 | LoginPage
+                 | Login UserName Password
+                 | Logout
+                 | ViewVillage ID
+                 | JobMenu ID
+                 | JobChange ID Job
+                 deriving (Show)

@@ -34,24 +34,46 @@ import Utils
 host = Host "127.0.0.1" --"192.168.0.136"
 port = "80"
 
+
+
+
 runServer :: MVar GameState -> MessageQueue Event -> LoginDB -> UserDB -> IO ()
 runServer gameStateVar messageQueue loginDB userDB =
   serve host port $ \(socket, addr) -> do
     request <- maybe "No Message" unpack <$> recv socket 1024
-    let ip = ipOf addr
-    maybeUser <- getUserFromIp loginDB ip
-    let validRequestEither = parseGetRequest request >>= parseRequest
-    let requestHandler = handleRequest loginDB ip userDB gameStateVar messageQueue maybeUser
-    response <- either unrecognisedRequest requestHandler validRequestEither
+    let validRequestEither = parseRequest <$> parseGetRequest request
+
+    maybeUser <- getUserFromIp loginDB (ipOf addr)
+    response <- either unrecognisedRequest
+                       (requestHandler (ipOf addr) maybeUser)
+                       validRequestEither
+
     putStrLn $ "<-- " ++ show validRequestEither
     putStrLn $ "--> " ++ show response
     putStrLn ""
+
     html <- toHTML response
-    send socket $ pack html
+    send socket (pack html)
     where
+      requestHandler :: IP -> Maybe User -> Request -> IO Response
+      requestHandler ip maybeUser request = case request of
+        (GameRequest req) -> handleRequest loginDB ip userDB gameStateVar messageQueue maybeUser req
+        (Resource path) -> return $ Image path
+        (NotSupported _) -> return Unrecognised
+
+      unrecognisedRequest :: String -> IO Response
       unrecognisedRequest _ = return Unrecognised
 
-handleRequest :: LoginDB -> IP -> UserDB -> MVar GameState -> MessageQueue Event -> Maybe User -> Request -> IO Response
+
+handleRequest :: LoginDB
+              -> IP
+              -> UserDB
+              -> MVar GameState
+              -> MessageQueue Event
+              -> Maybe User
+              -> GameRequest
+              -> IO Response
+
 handleRequest _ _ _ gameStateVar _ Nothing (ViewVillage id) = do
   gameState <- readMVar gameStateVar
   return $ maybe notFound villageFound $ getVillage gameState id
@@ -137,9 +159,8 @@ handleRequest loginDB ip userDB gameStateVar messageQueue (Just user) (JobChange
 
 handleRequest _ _ _ _ _ _ _ = return IllegalAction
 
-ipOf :: SockAddr -> String
-ipOf = takeWhile (/= ':') . show
 
+-- TODO cannot parse links like localhost/resource/image.png
 parseGetRequest :: String -> Either String GetRequest
 parseGetRequest = first show . parse rule "Parsing Request" . removeCR
   where
@@ -179,36 +200,45 @@ parseGetRequest = first show . parse rule "Parsing Request" . removeCR
       value <- many (noneOf "=& ")
       return (key, value)
 
-parseRequest :: GetRequest -> Either String Request
+
+parseRequest :: GetRequest -> Request
 parseRequest req@(Post vars)
   | member userName vars && member passWord vars =
-    let name = UserName $ fromJust $ List.lookup userName vars
-        pass = Password $ fromJust $ List.lookup passWord vars
-    in Right $ Login name pass
-  | otherwise = Left $ show req ++ " not supported."
+    let name = UserName $ unsafeLookup userName vars
+        pass = Password $ unsafeLookup passWord vars
+    in GameRequest $ Login name pass
+  | otherwise = NotSupported (show req ++ " not supported.")
   where
     userName = "username"
     passWord = "password"
 
 parseRequest req@(Get main vars)
-  | main == "" && hasKeys && isID firstKey = Right $ ViewVillage (read firstKey)
-  | main == "map" && hasKeys && isID firstKey = Right $ ViewVillage (read firstKey)
-  | main == "" = Right MainMenu
-  | main == "map" = Right WorldMap
-  | main == "login" && length vars < 2 = Right LoginPage
+  | main == "" && hasKeys && isID firstKey = GameRequest $ ViewVillage (read firstKey)
+  | main == "map" && hasKeys && isID firstKey = GameRequest $ ViewVillage (read firstKey)
+  | main == "" = GameRequest MainMenu
+  | main == "map" = GameRequest WorldMap
+  | main == "login" && length vars < 2 = GameRequest LoginPage
   | main == "login" && member userName vars && member passWord vars =
-    let name = UserName $ fromJust $ List.lookup userName vars
-        pass = Password $ fromJust $ List.lookup passWord vars
-    in Right $ Login name pass
-  | main == "logout" = Right Logout
-  | main == "person" && hasKeys && isID firstKey && firstValue == "Job" = Right $ JobMenu (read firstKey)
+    let name = UserName $ unsafeLookup userName vars
+        pass = Password $ unsafeLookup passWord vars
+    in GameRequest $ Login name pass
+  | main == "logout" = GameRequest Logout
+  | main == "person" && hasKeys && isID firstKey && firstValue == "Job" = GameRequest $ JobMenu (read firstKey)
   | main == "person" && hasKeys && isID firstKey && isJob firstValue =
-    Right $ JobChange (read firstKey) (fromJust $ safeRead firstValue)
-  | otherwise = Left $ show req ++ " not supported."
+    GameRequest $ JobChange (read firstKey) (fromJust $ safeRead firstValue)
+  | List.take 8 main == "resource" = Resource main -- TODO finish this
+  | otherwise = NotSupported $ show req ++ " not supported."
   where
     isJob s = isJust $ (safeRead s :: Maybe Job)
     hasKeys = length vars > 0
     firstKey = fst $ head vars
-    firstValue = fromJust (List.lookup firstKey vars)
+    firstValue = unsafeLookup firstKey vars
     userName = "username"
     passWord = "password"
+
+
+ipOf :: SockAddr -> String
+ipOf = takeWhile (/= ':') . show
+
+unsafeLookup :: Eq a => a -> [(a, b)] -> b
+unsafeLookup a = fromJust . List.lookup a
