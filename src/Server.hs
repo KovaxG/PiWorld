@@ -16,7 +16,7 @@ import Data.Bifunctor
 import Data.ByteString.Char8 (pack, unpack)
 import Data.Either.Extra
 import Data.List as List
-import Data.Map as Map hiding (member)
+import Data.Map as Map hiding (member, (\\))
 import Data.Maybe
 import Data.Set (toList)
 import Debug.Trace
@@ -33,8 +33,6 @@ import Utils
 
 host = Host "127.0.0.1" --"192.168.0.136"
 port = "80"
-
-
 
 
 runServer :: MVar GameState -> MessageQueue Event -> LoginDB -> UserDB -> IO ()
@@ -160,7 +158,6 @@ handleRequest loginDB ip userDB gameStateVar messageQueue (Just user) (JobChange
 handleRequest _ _ _ _ _ _ _ = return IllegalAction
 
 
--- TODO cannot parse links like localhost/resource/image.png
 parseGetRequest :: String -> Either String GetRequest
 parseGetRequest = first show . parse rule "Parsing Request" . removeCR
   where
@@ -171,7 +168,7 @@ parseGetRequest = first show . parse rule "Parsing Request" . removeCR
 
     pureGet = do
       string "GET /"
-      content <- many alphaNum
+      content <- many (noneOf " ")
       spaces
       return $ Get content []
 
@@ -188,7 +185,7 @@ parseGetRequest = first show . parse rule "Parsing Request" . removeCR
 
     getWithVars = do
       string "GET /"
-      content <- many alphaNum
+      content <- many (noneOf "? ")
       char '?'
       tuples <- sepBy tuple (char '&')
       spaces
@@ -226,7 +223,7 @@ parseRequest req@(Get main vars)
   | main == "person" && hasKeys && isID firstKey && firstValue == "Job" = GameRequest $ JobMenu (read firstKey)
   | main == "person" && hasKeys && isID firstKey && isJob firstValue =
     GameRequest $ JobChange (read firstKey) (fromJust $ safeRead firstValue)
-  | List.take 8 main == "resource" = Resource main -- TODO finish this
+  | startsWith resource main = Resource (main \\ resource)
   | otherwise = NotSupported $ show req ++ " not supported."
   where
     isJob s = isJust $ (safeRead s :: Maybe Job)
@@ -235,6 +232,7 @@ parseRequest req@(Get main vars)
     firstValue = unsafeLookup firstKey vars
     userName = "username"
     passWord = "password"
+    resource = "resource/"
 
 
 ipOf :: SockAddr -> String

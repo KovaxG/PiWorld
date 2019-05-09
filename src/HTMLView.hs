@@ -9,17 +9,17 @@
 -}
 module HTMLView where
 
+import Data.ByteString.Char8 (pack, unpack)
+import qualified Data.ByteString as BS
+
 import GameTypes
-import MyHTML
 import ServerTypes
 import Utils
 
+type HTML = String
+
 toPath :: String -> String
 toPath s = "src/views/" ++ s ++ ".html"
-
-htmlWith :: String -> String -> HTML
-htmlWith headContent bodyContent =
-  startHtml |> html (hed headContent |> body bodyContent)
 
 toHTML :: Response -> IO HTML
 toHTML Unrecognised = return ""
@@ -110,4 +110,4 @@ toHTML (PersonJobView name id job availableJobs) = do
 
 toHTML JobChanged = readFile $ toPath "JobChangedView"
 
-toHTML (Image path) = return $ "Pretend this is an image: " ++ path
+toHTML (Image path) = unpack <$> BS.readFile ("res/" ++ path)
