@@ -72,77 +72,40 @@ toHTML (Overview userName villages) = do
     lists = [(["vName", "vId"], villageList)]
     villageList =  fmap (\v -> fmap ($v) [getVillageName . fst, show . snd]) villages
 
-toHTML MainPage = return $
-  htmlWith (title "PiWorld Main Menu") (
-    getForm "/login" (
-      "You are not logged in, you can do that here:"
-      |> addBreak ""
-      |> button "Log In"
-    )
-  )
+toHTML MainPage = readFile $ toPath "MainPageView"
 
-toHTML (LoginSuccess userName) = return $
-  htmlWith (title "PiWorld Login") (
-    addBreak ( "Welcome " ++ getUserName userName )
-    |> getForm "/" (
-      addBreak ("Click here to go to main view: ")
-      |> button "Main Page"
-    )
-  )
+toHTML (LoginSuccess userName) = do
+  contents <- readFile $ toPath "LoginSuccessView"
+  return $ interpolateString vars contents
+  where
+    vars = [("userName", getUserName userName)]
 
 toHTML FailedLogin = return "User does not exist"
 
-toHTML (AlreadyLoggedIn userName) = return $
-  htmlWith (title "PiWorld Login") (
-    "You are already logged in as " ++ getUserName userName ++ ". Log off to sign in as another user."
-  )
-
-toHTML LoginScreen = return $
-  htmlWith (title "PiWorld Login") (
-    postForm "" (
-      addBreak "Login"
-      |> "username: "
-      |> input "text" "username" ""
-      |> addBreak ""
-      |> "password:"
-      |> input "text" "password" ""
-      |> addBreak ""
-      |> button "login"
-    )
-  )
-
-toHTML (WorldMapScreen villages) = return $
-  htmlWith (title "PiWorld Worldmap") (
-    getForm "" (
-      addBreak "Game Map"
-      |> (addBreak . villageAndButton =<< villages)
-    )
-  )
+toHTML (AlreadyLoggedIn userName) = do
+  contents <- readFile $ toPath "AlreadyLoggedInView"
+  return $ interpolateString vars contents
   where
-    villageAndButton (name, location, id) =
-      getVillageName name ++ " " ++ show location ++ " " ++ input "submit" (show id) "view"
+    vars = [("userName", getUserName userName)]
 
-toHTML IllegalAction = return $
-  htmlWith (title "Criminal Scum") (
-    "Hold right there criminal scum! You violated the law!"
-  )
+toHTML LoginScreen = readFile $ toPath "LoginScreenView"
 
-toHTML (PersonJobView name id job availableJobs) = return $
-  htmlWith (title ("Job of " ++ name) ) (
-    addBreak ("Name: " ++ name)
-    |> addBreak ("Current Job: " ++ show job)
-    |> getForm "" (
-      addBreak . toInputs =<< availableJobs
-    )
-  )
+toHTML (WorldMapScreen villages) = do
+  contents <- readFile $ toPath "WorldMapView"
+  return $ interpolateList lists contents
   where
-    toInputs job = input "submit" (show id) (show job)
+    lists = [(["vName", "vLocation", "vId"], villageList)]
+    villageList =
+      fmap (\(name, location, id) -> [getVillageName name, show location, show id]) villages
 
-toHTML JobChanged = return $
-  htmlWith (title ("Great Success") ) (
-    addBreak "Job changed."
-    |> getForm "/" (
-      addBreak ("Click here to go to main view: ")
-      |> button "Main Page"
-    )
-  )
+toHTML IllegalAction = readFile $ toPath "IllegalActionView"
+
+toHTML (PersonJobView name id job availableJobs) = do
+  contents <- readFile $ toPath "PersonJobView"
+  return $ interpolateList lists $ interpolateString vars contents
+  where
+    vars = [("villagerName", name), ("currentJob", show job)]
+    lists = [(["vId", "vJob"], jobList)]
+    jobList = fmap (\j -> [show id, show j]) availableJobs
+
+toHTML JobChanged = readFile $ toPath "JobChangedView"
