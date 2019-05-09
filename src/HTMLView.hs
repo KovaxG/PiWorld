@@ -62,35 +62,15 @@ toHTML (OwnedVillageView villageName location  villagers buildings inventory) = 
           ]
       ) villagers
 
-toHTML LogoutPage = return $
-  htmlWith (title "PiWorld Logout") (
-    addBreak "Logout Successful"
-    |> getForm "/" (
-      addBreak "Click here to return to the main page."
-      |> button "Main Page"
-    )
-  )
+toHTML LogoutPage = readFile $ toPath "LogoutView"
 
-toHTML (Overview userName villages) = return $
-  htmlWith (title "PiWorld Main Menu") (
-    addBreak ("Hello, " ++ getUserName userName)
-    |> getForm "" (
-      addBreak "Here are your villages"
-      |> (addBreak . villageAndButton =<< villages)
-    )
-    |> addBreak ""
-    |> getForm "/map" (
-      addBreak "View world map: "
-      |> button "World Map"
-    )
-    |> addBreak ""
-    |> getForm "/logout" (
-      "Click here to log out:"
-      |> button "Log Out"
-    )
-  )
+toHTML (Overview userName villages) = do
+  contents <- readFile $ toPath "OverviewView"
+  return $ interpolateList lists $ interpolateString vars contents
   where
-    villageAndButton (name, id) = getVillageName name ++ input "submit" (show id) "view"
+    vars = [("userName", getUserName userName)]
+    lists = [(["vName", "vId"], villageList)]
+    villageList =  fmap (\v -> fmap ($v) [getVillageName . fst, show . snd]) villages
 
 toHTML MainPage = return $
   htmlWith (title "PiWorld Main Menu") (
