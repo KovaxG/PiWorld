@@ -162,7 +162,7 @@ parseGetRequest :: String -> Either String GetRequest
 parseGetRequest = first show . parse rule "Parsing Request" . removeCR
   where
     removeCR :: String -> String
-    removeCR = List.filter (/='\r')
+    removeCR = List.filter (!='\r')
 
     rule = choice [try getWithVars, try pureGet, try post]
 
@@ -236,7 +236,7 @@ parseRequest req@(Get main vars)
 
 
 ipOf :: SockAddr -> String
-ipOf = takeWhile (/= ':') . show
+ipOf = takeWhile (!= ':') . show
 
 unsafeLookup :: Eq a => a -> [(a, b)] -> b
 unsafeLookup a = fromJust . List.lookup a

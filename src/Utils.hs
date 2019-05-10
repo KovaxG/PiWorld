@@ -70,7 +70,7 @@ interpolateString :: [(String, String)] -> String -> String
 interpolateString dl =
   concat . fmap (\w -> if firstElemIs '$' w then replace w else w) . splitVariables '$'
   where
-    replace (_:w) = (++end)  $ fromMaybe "Nothing" $ lookup w' dl
+    replace (_:w) = (++end)  $ fromMaybe "MISSING" $ lookup w' dl
       where (w', end) = span isAlphaNum w
 
 splitVariables :: Char -> String -> [String]
@@ -79,7 +79,7 @@ splitVariables c s
   | otherwise = start : (c : var) : splitVariables c rest
   where
     (var, rest) = span isAlphaNum $ tail cont
-    (start, cont) = span (/=c) s
+    (start, cont) = span (!=c) s
 
 firstElemIs :: (Eq a) => a -> [a] -> Bool
 firstElemIs a [] = False
@@ -111,3 +111,6 @@ interpolateList dl = unlines . fmap processLine . lines
 
 startsWith :: Eq a => [a] -> [a] -> Bool
 startsWith x s = take (length x) s == x
+
+(!=) :: Eq a => a -> a -> Bool
+(!=) = (/=) -- Added because of Fira Code font
