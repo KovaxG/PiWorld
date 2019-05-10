@@ -63,7 +63,7 @@ saturate lower upper value
 member :: Eq a => a -> [(a,b)] -> Bool
 member a = elem a . fmap fst
 
-mapWithState :: [a] -> b -> (a -> b -> (a, b)) -> ([a], b)
+mapWithState :: Traversable t => t a -> b -> (a -> b -> (c, b)) -> (t c, b)
 mapWithState as b f = runState (traverse (state . f) as) b
 
 interpolateString :: [(String, String)] -> String -> String
