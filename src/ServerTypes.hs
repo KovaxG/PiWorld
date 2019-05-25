@@ -31,7 +31,7 @@ data Response = DefaultVillageView VillageName UserName Location
               | LoginSuccess UserName
               | AlreadyLoggedIn UserName
               | LoginScreen
-              | WorldMapScreen [(VillageName, Location, ID)]
+              | WorldMapScreen (Int, Int) [Location] [(VillageName, Location, ID)]
               | IllegalAction
               | PersonJobView Name ID Job [Job]
               | JobChanged

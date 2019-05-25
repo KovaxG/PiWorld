@@ -56,11 +56,33 @@ runServer gameStateVar messageQueue loginDB userDB =
       requestHandler :: IP -> Maybe User -> Request -> IO Response
       requestHandler ip maybeUser request = case request of
         (GameRequest req) -> handleRequest loginDB ip userDB gameStateVar messageQueue maybeUser req
-        (Resource path) -> return $ Image path
+        (Resource rawPath) -> do
+          gameMap <- gTerrain <$> readMVar gameStateVar
+          let path = processImagePath gameMap rawPath
+          return $ Image path
         (NotSupported _) -> return Unrecognised
 
       unrecognisedRequest :: String -> IO Response
       unrecognisedRequest _ = return Unrecognised
+
+
+processImagePath :: Map Location Terrain -> String -> String
+processImagePath m s =
+  parse locationRule "Tile Resource" s
+  |> mapLeft (const s)
+  |> (=<<) (toEither s . flip Map.lookup m)
+  |> either id tileToPath
+  where
+    tileToPath :: Terrain -> String
+    tileToPath t = show t ++ ".png"
+
+    locationRule = do
+      string "Tile("
+      first <- read <$> many digit
+      char ','
+      second <- read <$> many digit
+      char ')'
+      return (first, second)
 
 
 handleRequest :: LoginDB
@@ -120,9 +142,14 @@ handleRequest _ _ _ _ _ (Just user) LoginPage = return $ AlreadyLoggedIn (uName 
 
 handleRequest _ _ _ _ _ Nothing LoginPage = return LoginScreen
 
+-- TODO need to only send locations discovered by player
 handleRequest _ _ _ gameStateVar _ _ WorldMap = do
   gameState <- readMVar gameStateVar
-  return $ WorldMapScreen (toData <$> gVillages gameState)
+  let villages = gVillages gameState
+  let locations = Map.keys $ gTerrain gameState
+  let maxWidth = maximum $ fmap fst locations
+  let maxHeight = maximum $ fmap snd locations
+  return $ WorldMapScreen (maxWidth, maxHeight) locations (toData <$> villages)
   where
     toData v = (vName v, vLocation v, vID v)
 
@@ -236,7 +263,7 @@ parseRequest req@(Get main vars)
 
 
 ipOf :: SockAddr -> String
-ipOf = takeWhile (!= ':') . show
+ipOf = takeWhile (!=':') . show
 
 unsafeLookup :: Eq a => a -> [(a, b)] -> b
 unsafeLookup a = fromJust . List.lookup a

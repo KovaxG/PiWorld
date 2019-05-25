@@ -90,13 +90,25 @@ toHTML (AlreadyLoggedIn userName) = do
 
 toHTML LoginScreen = readFile $ toPath "LoginScreenView"
 
-toHTML (WorldMapScreen villages) = do
+toHTML (WorldMapScreen (maxWidth, maxHeight) locations villages) = do
   contents <- readFile $ toPath "WorldMapView"
   return $ interpolateList lists contents
   where
-    lists = [(["vName", "vLocation", "vId"], villageList)]
+    lists = [
+      (["vName", "vLocation", "vId"], villageList),
+      (["tileLocation", "possibleBreak"], tileLocationList)
+      ]
     villageList =
       fmap (\(name, location, id) -> [getVillageName name, show location, show id]) villages
+    tileLocationList = fmap (\l -> [showLocation l, breakIfMax l]) locations
+
+    showLocation :: Location -> String
+    showLocation (x,y) = "Tile(" ++ show x ++ "," ++ show y ++ ")"
+
+    breakIfMax :: Location -> String
+    breakIfMax (_, c)
+      | c == maxWidth = "<br>"
+      | otherwise = ""
 
 toHTML IllegalAction = readFile $ toPath "IllegalActionView"
 

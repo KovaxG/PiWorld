@@ -199,7 +199,7 @@ gathererLogic :: Data.Map.Map Location Terrain -> State Village ()
 gathererLogic terrain = do
   villagers <- gets vVillagers
   location <- gets vLocation
-  let resources = getTerrain terrain (areaOf 1 location)
+  let resources = getTerrain terrain (aroundLocation 1 location)
 
   inventory <- gets vInventory
   let newInventory = execState (updateInventory resources villagers) inventory
@@ -211,7 +211,7 @@ explorerLogic terrain = do
   let explorerNr = count Explorer $ fmap pJob villagers
 
   location <- gets vLocation
-  let accessibleTerrainTypes = nub $ getTerrain terrain (areaOf 1 location)
+  let accessibleTerrainTypes = nub $ getTerrain terrain (aroundLocation 1 location)
 
   discoveredTerrainTypes <- gets vDiscoveredTerrain
   let undiscoveredLocations = accessibleTerrainTypes \\ (Data.Set.toList discoveredTerrainTypes)
@@ -235,8 +235,8 @@ updateInventory terrains ps = do
     gatherRatePerTick = perDayToPerTick gatherRatePerDay
 
 
-areaOf :: Int -> Location -> [Location]
-areaOf n (x, y) = [(i, j) | i <- [x-n.. x+n], j <- [y-n .. y+n]]
+aroundLocation :: Int -> Location -> [Location]
+aroundLocation n (x, y) = [(i, j) | i <- [x-n.. x+n], j <- [y-n .. y+n]]
 
 updateTickNr :: State GameState ()
 updateTickNr = do

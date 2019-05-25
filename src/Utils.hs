@@ -114,3 +114,9 @@ startsWith x s = take (length x) s == x
 
 (!=) :: Eq a => a -> a -> Bool
 (!=) = (/=) -- Added because of Fira Code font
+
+(|>) :: a -> (a -> b) -> b
+a |> f = f a
+
+toEither :: b -> Maybe a -> Either b a
+toEither b ma = maybe (Left b) Right ma
