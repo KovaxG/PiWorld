@@ -8,9 +8,18 @@
 
     #vName #vLocation <input type="submit" name="#vId" value="View"> <br>
 
-    <img src="resource/#tileLocation" alt="Grass"> #possibleBreak
+    <img src="resource/#tileLocation" alt="Tile" onclick ="showInfo("#tileLocation")"> #possibleBreak
 
   </form>
 
-</body>
+  <p id="infoField"></p>
+
+  <script>
+  function showInfo(a) {
+    document.getElementById("infoField").innerHTML = a
+  }
+  </script>
+
+  Response processed in $processTime ms.
+  </body>
 </html>

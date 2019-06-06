@@ -21,6 +21,7 @@ import Data.Maybe
 import Data.Set (toList)
 import Debug.Trace
 import Network.Simple.TCP
+import System.CPUTime
 import Text.Parsec
 
 import GameTypes
@@ -38,6 +39,7 @@ port = "80"
 runServer :: MVar GameState -> MessageQueue Event -> LoginDB -> UserDB -> IO ()
 runServer gameStateVar messageQueue loginDB userDB =
   serve host port $ \(socket, addr) -> do
+    startTime <- getCPUTime
     request <- maybe "No Message" unpack <$> recv socket 1024
     let validRequestEither = parseRequest <$> parseGetRequest request
 
@@ -48,10 +50,14 @@ runServer gameStateVar messageQueue loginDB userDB =
 
     putStrLn $ "<-- " ++ show validRequestEither
     putStrLn $ "--> " ++ show response
-    putStrLn ""
 
-    html <- toHTML response
+    endTime <- getCPUTime
+    let processTime = fromIntegral (endTime - startTime) / 1000000000
+    putStrLn $ "Time took: " ++ show processTime ++ " ms"
+
+    html <- toHTML processTime response
     send socket (pack html)
+    putStrLn ""
     where
       requestHandler :: IP -> Maybe User -> Request -> IO Response
       requestHandler ip maybeUser request = case request of
@@ -160,7 +166,7 @@ handleRequest _ _ _ gameStateVar _ (Just user) (JobMenu id) = do
   where
     notFound = IllegalAction
     found villages p =
-      let village = fromJust $ find (elem p . vVillagers) villages
+      let village = fromMaybe (error "[Error] handleRequest") $ find (elem p . vVillagers) villages
           villageJobs = catMaybes $ fmap jobOf (Data.Set.toList $ vDiscoveredTerrain village)
           availableJobs = [Civilian, Hunter, Explorer] ++ villageJobs
       in PersonJobView (pName p) (pID p) (pJob p) availableJobs
@@ -237,6 +243,7 @@ parseRequest req@(Post vars)
     passWord = "password"
 
 parseRequest req@(Get main vars)
+  | startsWith "favicon.ico" main = Resource main
   | main == "" && hasKeys && isID firstKey = GameRequest $ ViewVillage (read firstKey)
   | main == "map" && hasKeys && isID firstKey = GameRequest $ ViewVillage (read firstKey)
   | main == "" = GameRequest MainMenu
@@ -265,5 +272,5 @@ parseRequest req@(Get main vars)
 ipOf :: SockAddr -> String
 ipOf = takeWhile (!=':') . show
 
-unsafeLookup :: Eq a => a -> [(a, b)] -> b
-unsafeLookup a = fromJust . List.lookup a
+unsafeLookup :: (Show a, Eq a) => a -> [(a, b)] -> b
+unsafeLookup a = fromMaybe (error $ "[Error] Looking up" ++ show a) . List.lookup a

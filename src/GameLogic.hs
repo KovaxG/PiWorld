@@ -54,7 +54,6 @@ gameLoop queueVar gameStateVar = do
   threadDelay 1000000 -- TODO account for time taken to update tick
   events <- popMessages queueVar
   (dt, gameState) <- duration(updateGameState gameStateVar events)
-  putStrLn $ showDuration dt
   --putStrLn $ show event
   --putStrLn $ show $ gTickNr gameState
   gameLoop queueVar gameStateVar

@@ -96,7 +96,9 @@ interpolateList dl = unlines . fmap processLine . lines
   where
     processLine :: String -> String
     processLine line
-      | elem '#' line = (=<<) ((++"\n") . concat . merge list) $ fromJust $ flip lookup dl vars
+      | elem '#' line = flip lookup dl vars
+                          |> fromMaybe (error "[Error] Interpolating list!")
+                          |> (=<<) ((++"\n") . concat . merge list) 
       | otherwise = line
       where
         vars = map tail $ filter (firstElemIs '#') list

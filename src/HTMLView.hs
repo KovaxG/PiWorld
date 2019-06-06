@@ -21,21 +21,22 @@ type HTML = String
 toPath :: String -> String
 toPath s = "src/views/" ++ s ++ ".html"
 
-toHTML :: Response -> IO HTML
-toHTML Unrecognised = return ""
+toHTML :: Double -> Response -> IO HTML
+toHTML processTime Unrecognised = return ("It took " ++ show processTime ++ "ms to not recognize this command.")
 
-toHTML VillageNotFound = return "No such village found."
+toHTML processTime VillageNotFound = return $ "No such village found. This was done in " ++ show processTime ++ " ms."
 
-toHTML (DefaultVillageView villageName userName location) = do
+toHTML processTime (DefaultVillageView villageName userName location) = do
   contents <- readFile $ toPath "DefaultVillageView"
   return $ interpolateString vars contents
   where
     vars = [
       ("villageName", getVillageName villageName),
       ("userName", getUserName userName),
-      ("location", show location)]
+      ("location", show location),
+      ("processTime", show processTime)]
 
-toHTML (OwnedVillageView villageName location  villagers buildings inventory) = do
+toHTML processTime (OwnedVillageView villageName location  villagers buildings inventory) = do
   contents <- readFile $ toPath "OwnedVillageView"
   return $ interpolateList lists $ interpolateString strings contents
   where
@@ -43,7 +44,8 @@ toHTML (OwnedVillageView villageName location  villagers buildings inventory) = 
       ("villageName", getVillageName villageName),
       ("location", show location),
       ("population", show $ length villagers),
-      ("inventory", show inventory)]
+      ("inventory", show inventory),
+      ("processTime", show processTime)]
 
     lists = [
       (["buildings"], buildingList),
@@ -62,45 +64,48 @@ toHTML (OwnedVillageView villageName location  villagers buildings inventory) = 
           ]
       ) villagers
 
-toHTML LogoutPage = readFile $ toPath "LogoutView"
+toHTML processTime LogoutPage = readFile $ toPath "LogoutView"
 
-toHTML (Overview userName villages) = do
+toHTML processTime (Overview userName villages) = do
   contents <- readFile $ toPath "OverviewView"
   return $ interpolateList lists $ interpolateString vars contents
   where
-    vars = [("userName", getUserName userName)]
+    vars = [
+      ("userName", getUserName userName),
+      ("processTime", show processTime)]
     lists = [(["vName", "vId"], villageList)]
     villageList =  fmap (\v -> fmap ($v) [getVillageName . fst, show . snd]) villages
 
-toHTML MainPage = readFile $ toPath "MainPageView"
+toHTML processTime MainPage = readFile $ toPath "MainPageView"
 
-toHTML (LoginSuccess userName) = do
+toHTML processTime (LoginSuccess userName) = do
   contents <- readFile $ toPath "LoginSuccessView"
   return $ interpolateString vars contents
   where
     vars = [("userName", getUserName userName)]
 
-toHTML FailedLogin = return "User does not exist"
+toHTML processTime FailedLogin = return "User does not exist"
 
-toHTML (AlreadyLoggedIn userName) = do
+toHTML processTime (AlreadyLoggedIn userName) = do
   contents <- readFile $ toPath "AlreadyLoggedInView"
   return $ interpolateString vars contents
   where
     vars = [("userName", getUserName userName)]
 
-toHTML LoginScreen = readFile $ toPath "LoginScreenView"
+toHTML processTime LoginScreen = readFile $ toPath "LoginScreenView"
 
-toHTML (WorldMapScreen (maxWidth, maxHeight) locations villages) = do
+toHTML processTime (WorldMapScreen (maxWidth, maxHeight) locations villages) = do
   contents <- readFile $ toPath "WorldMapView"
-  return $ interpolateList lists contents
+  return $ interpolateString vars $ interpolateList lists contents
   where
+    vars = [("processTime", show processTime)]
     lists = [
       (["vName", "vLocation", "vId"], villageList),
-      (["tileLocation", "possibleBreak"], tileLocationList)
+      (["tileLocation", "tileLocation", "possibleBreak"], tileLocationList)
       ]
     villageList =
       fmap (\(name, location, id) -> [getVillageName name, show location, show id]) villages
-    tileLocationList = fmap (\l -> [showLocation l, breakIfMax l]) locations
+    tileLocationList = fmap (\l -> [showLocation l, showLocation l, breakIfMax l]) locations
 
     showLocation :: Location -> String
     showLocation (x,y) = "Tile(" ++ show x ++ "," ++ show y ++ ")"
@@ -110,9 +115,9 @@ toHTML (WorldMapScreen (maxWidth, maxHeight) locations villages) = do
       | c == maxWidth = "<br>"
       | otherwise = ""
 
-toHTML IllegalAction = readFile $ toPath "IllegalActionView"
+toHTML processTime IllegalAction = readFile $ toPath "IllegalActionView"
 
-toHTML (PersonJobView name id job availableJobs) = do
+toHTML processTime (PersonJobView name id job availableJobs) = do
   contents <- readFile $ toPath "PersonJobView"
   return $ interpolateList lists $ interpolateString vars contents
   where
@@ -120,6 +125,6 @@ toHTML (PersonJobView name id job availableJobs) = do
     lists = [(["vId", "vJob"], jobList)]
     jobList = fmap (\j -> [show id, show j]) availableJobs
 
-toHTML JobChanged = readFile $ toPath "JobChangedView"
+toHTML processTime JobChanged = readFile $ toPath "JobChangedView"
 
-toHTML (Image path) = unpack <$> BS.readFile ("res/" ++ path)
+toHTML _ (Image path) = unpack <$> BS.readFile ("res/" ++ path)
