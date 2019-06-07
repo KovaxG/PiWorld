@@ -12,8 +12,8 @@ import GameTypes
 import ServerTypes
 import Utils
 
-parseHTTPRequest :: String -> Either String GetRequest
-parseHTTPRequest = leftMap show . parse rule "Parsing Request" . removeCR
+parseHTTPRequest :: String -> Either String HTTPRequest
+parseHTTPRequest = leftMap show . parse rule "Parsing HTTP Request" . removeCR
   where
     removeCR :: String -> String
     removeCR = filter (!='\r')
@@ -52,7 +52,7 @@ parseHTTPRequest = leftMap show . parse rule "Parsing Request" . removeCR
       return (key, value)
 
 
-parseRequest :: GetRequest -> Request
+parseRequest :: HTTPRequest -> Request
 parseRequest req@(Post vars)
   | member userName vars && member passWord vars =
     let name = UserName $ unsafeLookup userName vars
@@ -88,6 +88,3 @@ parseRequest req@(Get main vars)
     userName = "username"
     passWord = "password"
     resource = "resource/"
-
-unsafeLookup :: (Show a, Eq a) => a -> [(a, b)] -> b
-unsafeLookup a = fromMaybe (error $ "[Error] Looking up" ++ show a) . lookup a

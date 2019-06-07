@@ -119,8 +119,10 @@ interpolateList dl = unlines . fmap processLine . lines
 startsWith :: Eq a => [a] -> [a] -> Bool
 startsWith x s = take (length x) s == x
 
+-- Added because of Fira Code font :D
+-- != looks like this =/= in the font.
 (!=) :: Eq a => a -> a -> Bool
-(!=) = (/=) -- Added because of Fira Code font
+(!=) = (/=)
 
 (|>) :: a -> (a -> b) -> b
 a |> f = f a
@@ -133,3 +135,6 @@ safeHead = listToMaybe
 
 leftMap :: (a -> c) -> Either a b -> Either c b
 leftMap f = either (Left . f) Right
+
+unsafeLookup :: (Show a, Eq a) => a -> [(a, b)] -> b
+unsafeLookup a = fromMaybe (error $ "[Error] Looking up" ++ show a) . lookup a

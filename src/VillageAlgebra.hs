@@ -29,10 +29,7 @@ import GameTypes
 import ServerTypes
 import Utils
 
--- TODO maybe replace all occurences of IO with a generic context
--- so that they can be used in a context with Identity instead
-
-setVillagers :: [Person] -> StateT Village IO ()
+setVillagers :: (Monad m) => [Person] -> StateT Village m ()
 setVillagers villagers = modify $ \v -> v { vVillagers = villagers }
 
 modifyVillagers :: (Person -> Person) -> State Village ()
@@ -40,39 +37,39 @@ modifyVillagers f = do
   villagers <- gets vVillagers
   modify $ \v -> v { vVillagers = f <$> villagers }
 
-setInventory :: Inventory -> StateT Village IO ()
+setInventory :: (Monad m) => Inventory -> StateT Village m ()
 setInventory inv = modify $ \v -> v { vInventory = inv }
 
-modifyInventory :: (Inventory -> Inventory) -> StateT Village IO ()
+modifyInventory :: (Monad m) => (Inventory -> Inventory) -> StateT Village m ()
 modifyInventory f = do
   inventory <- gets vInventory
   modify $ \v -> v { vInventory = f inventory }
 
-updateTickNr :: StateT GameState IO ()
+updateTickNr :: (Monad m) => StateT GameState m ()
 updateTickNr = do
   curTick <- gets gTickNr
   modify $ \s -> s { gTickNr = curTick + 1 }
 
-updatePercentDiscoveringLocation :: Double -> StateT Village IO ()
+updatePercentDiscoveringLocation :: (Monad m) => Double -> StateT Village m ()
 updatePercentDiscoveringLocation newPercent = do
   discoveringLocation <- gets vDiscoveringLocation
   maybe noLocation updatePercent discoveringLocation
   where
     noLocation = return ()
-    updatePercent :: (Location, Percent) -> StateT Village IO ()
+    updatePercent :: (Monad m) => (Location, Percent) ->  StateT Village m ()
     updatePercent (location, _) =
       modify $ \v -> v { vDiscoveringLocation = Just (location, newPercent) }
 
-clearDiscoveringLocation :: StateT Village IO ()
+clearDiscoveringLocation :: (Monad m) => StateT Village m ()
 clearDiscoveringLocation = modify $ \v -> v { vDiscoveringLocation = Nothing }
 
-addDiscoveredLocation :: Location -> StateT Village IO ()
+addDiscoveredLocation :: (Monad m) => Location -> StateT Village m ()
 addDiscoveredLocation loc = modify $ \v -> v { vDiscoveredLocations = loc : vDiscoveredLocations v }
 
-startNewDiscoveringLocation :: Location -> StateT Village IO ()
+startNewDiscoveringLocation :: (Monad m) => Location -> StateT Village m ()
 startNewDiscoveringLocation loc = modify $ \v -> v { vDiscoveringLocation = Just (loc, 0) }
 
-getInventoryCapacity :: StateT Village IO Int
+getInventoryCapacity :: (Monad m) => StateT Village m Int
 getInventoryCapacity = do
   buildings <- gets vBuildings
   return $ sum $ fmap (capacity . buildingSize) buildings

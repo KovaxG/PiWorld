@@ -67,6 +67,9 @@ runServer gameStateVar messageQueue loginDB userDB =
       unrecognisedRequest :: String -> IO Response
       unrecognisedRequest _ = return Unrecognised
 
+      ipOf :: SockAddr -> String
+      ipOf = takeWhile (!=':') . show
+
 
 processImagePath :: Maybe User -> GameState -> String -> String
 processImagePath maybeUser gameState s =
@@ -163,7 +166,6 @@ handleRequest _ _ _ _ _ (Just user) LoginPage = return $ AlreadyLoggedIn (uName 
 
 handleRequest _ _ _ _ _ Nothing LoginPage = return LoginScreen
 
--- TODO need to only send locations discovered by player
 handleRequest _ _ _ gameStateVar _ _ WorldMap = do
   gameState <- readMVar gameStateVar
   let villages = gVillages gameState
@@ -205,7 +207,3 @@ handleRequest loginDB ip userDB gameStateVar messageQueue (Just user) (JobChange
       return JobChanged
 
 handleRequest _ _ _ _ _ _ _ = return IllegalAction
-
-
-ipOf :: SockAddr -> String
-ipOf = takeWhile (!=':') . show
