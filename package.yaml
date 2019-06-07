@@ -29,6 +29,7 @@ dependencies:
 - parsec
 - deepseq
 - mtl
+- random-shuffle
 
 library:
   source-dirs: src

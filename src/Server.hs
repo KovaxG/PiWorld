@@ -63,8 +63,8 @@ runServer gameStateVar messageQueue loginDB userDB =
       requestHandler ip maybeUser request = case request of
         (GameRequest req) -> handleRequest loginDB ip userDB gameStateVar messageQueue maybeUser req
         (Resource rawPath) -> do
-          gameMap <- gTerrain <$> readMVar gameStateVar
-          let path = processImagePath gameMap rawPath
+          gameState <- readMVar gameStateVar
+          let path = processImagePath maybeUser gameState rawPath
           return $ Image path
         (NotSupported _) -> return Unrecognised
 
@@ -72,13 +72,33 @@ runServer gameStateVar messageQueue loginDB userDB =
       unrecognisedRequest _ = return Unrecognised
 
 
-processImagePath :: Map Location Terrain -> String -> String
-processImagePath m s =
-  parse locationRule "Tile Resource" s
-  |> mapLeft (const s)
-  |> (=<<) (toEither s . flip Map.lookup m)
-  |> either id tileToPath
+processImagePath :: Maybe User -> GameState -> String -> String
+processImagePath maybeUser gameState s =
+  let worldMap = gTerrain gameState
+      visibleLocations = maybe (omniscientView worldMap) userView maybeUser
+  in parse locationRule "Tile Resource" s
+      |> fmap (myLookup worldMap visibleLocations)
+      |> either (const s) id
   where
+    myLookup :: Map Location Terrain -> [Location] -> Location -> String
+    myLookup worldMap visibleLocs loc
+      | elem loc visibleLocs =
+        Map.lookup loc worldMap
+        |> maybe hiddenTile tileToPath
+      | otherwise = hiddenTile
+      where
+        hiddenTile :: String
+        hiddenTile = "favicon.ico"
+
+    omniscientView :: Map Location Terrain -> [Location]
+    omniscientView = keys
+
+    userView :: User -> [Location]
+    userView user =
+      villagesOf gameState user
+      |> (=<<) vDiscoveredLocations
+      |> nub
+
     tileToPath :: Terrain -> String
     tileToPath t = show t ++ ".png"
 
@@ -120,6 +140,7 @@ handleRequest _ _ _ gameStateVar _ (Just user) (ViewVillage id) = do
                             (vVillagers village)
                             (vBuildings village)
                             (vInventory village)
+                            (maybe 0 snd $ vDiscoveringLocation village)
       else DefaultVillageView (vName village) (uName $ vUser village) (vLocation village)
 
 handleRequest loginDB ip _ _ _ _ Logout = do
@@ -162,15 +183,16 @@ handleRequest _ _ _ gameStateVar _ _ WorldMap = do
 handleRequest _ _ _ gameStateVar _ (Just user) (JobMenu id) = do
   gameState <- readMVar gameStateVar
   let allPeople = vVillagers =<< gVillages gameState
-  return $ maybe notFound (found $ gVillages gameState) $ find ((==id) . pID) allPeople
+  return $ maybe notFound (found (gTerrain gameState) (gVillages gameState)) $ find ((==id) . pID) allPeople
   where
     notFound = IllegalAction
-    found villages p =
-      let village = fromMaybe (error "[Error] handleRequest") $ find (elem p . vVillagers) villages
-          villageJobs = catMaybes $ fmap jobOf (Data.Set.toList $ vDiscoveredTerrain village)
+
+    found :: Map Location Terrain -> [Village] -> Person -> Response
+    found worldMap villages p =
+      let village = fromJust $ find (elem p . vVillagers) villages
+          villageJobs = catMaybes $ fmap jobOf (getTerrain worldMap $ vDiscoveredLocations village)
           availableJobs = [Civilian, Hunter, Explorer] ++ villageJobs
       in PersonJobView (pName p) (pID p) (pJob p) availableJobs
-
 
     jobOf :: Terrain -> Maybe Job
     jobOf Forest = Just Woodcutter

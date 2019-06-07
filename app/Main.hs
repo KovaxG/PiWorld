@@ -17,10 +17,11 @@ import MessageQueue (newEmptyQueue, pushMessage, popMessages, MessageQueue)
 import Server (runServer)
 import UserDB (newUserDB, addUser, getUser)
 
+-- TODO this ought to be propagated and displayed in game
 version = "v" ++ show bigversion ++ "." ++ show subversion
   where
     bigversion = 0
-    subversion = 1
+    subversion = 2
 
 main :: IO ()
 main = do

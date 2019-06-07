@@ -45,7 +45,8 @@ data Village = Village {
   vInventory :: !Inventory,
   vVillagers :: ![Person],
   vBuildings :: ![Building],
-  vDiscoveredTerrain :: !(Set Terrain)
+  vDiscoveredLocations :: ![Location],
+  vDiscoveringLocation :: !(Maybe (Location, Percent))
 } deriving (Show)
 
 data User = User {
@@ -117,6 +118,9 @@ data Tool = EmptyHanded
 
 data BuildingSize = Tiny | Small | Normal | Big deriving (Show)
 data Building = Building BuildingSize deriving (Show)
+
+getTerrain :: Map Location Terrain -> [Location] -> [Terrain]
+getTerrain t = catMaybes . fmap (flip Map.lookup t)
 
 data Event = NewVillage VillageName Location User [Name]
            | Tick

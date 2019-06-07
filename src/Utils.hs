@@ -14,6 +14,7 @@ import Data.Char
 import Data.List
 import Data.Maybe
 
+type Percent = Double
 type ID = Int
 
 isID :: String -> Bool
@@ -37,7 +38,10 @@ split n as
     (taken, rest) = splitAt n as
 
 count :: Eq a => a -> [a] -> Int
-count a = length . filter (==a)
+count a = countf (==a)
+
+countf :: (a -> Bool) -> [a] -> Int
+countf p = length . filter p
 
 maxBy :: Ord b => (a -> b) -> [a] -> a
 maxBy f = maximumBy (\a b -> f a `compare` f b)
@@ -98,7 +102,7 @@ interpolateList dl = unlines . fmap processLine . lines
     processLine line
       | elem '#' line = flip lookup dl vars
                           |> fromMaybe (error "[Error] Interpolating list!")
-                          |> (=<<) ((++"\n") . concat . merge list) 
+                          |> (=<<) ((++"\n") . concat . merge list)
       | otherwise = line
       where
         vars = map tail $ filter (firstElemIs '#') list
@@ -122,3 +126,6 @@ a |> f = f a
 
 toEither :: b -> Maybe a -> Either b a
 toEither b ma = maybe (Left b) Right ma
+
+safeHead :: [a] -> Maybe a
+safeHead = listToMaybe

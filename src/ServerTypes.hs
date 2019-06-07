@@ -21,7 +21,7 @@ data GetRequest = Get String [(String, String)]
                 deriving (Show)
 
 data Response = DefaultVillageView VillageName UserName Location
-              | OwnedVillageView VillageName Location [Person] [Building] Inventory
+              | OwnedVillageView VillageName Location [Person] [Building] Inventory Percent
               | VillageNotFound
               | Unrecognised
               | LogoutPage

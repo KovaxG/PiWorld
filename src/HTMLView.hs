@@ -36,7 +36,7 @@ toHTML processTime (DefaultVillageView villageName userName location) = do
       ("location", show location),
       ("processTime", show processTime)]
 
-toHTML processTime (OwnedVillageView villageName location  villagers buildings inventory) = do
+toHTML processTime (OwnedVillageView villageName location  villagers buildings inventory explorationPercent) = do
   contents <- readFile $ toPath "OwnedVillageView"
   return $ interpolateList lists $ interpolateString strings contents
   where
@@ -45,7 +45,8 @@ toHTML processTime (OwnedVillageView villageName location  villagers buildings i
       ("location", show location),
       ("population", show $ length villagers),
       ("inventory", show inventory),
-      ("processTime", show processTime)]
+      ("processTime", show processTime),
+      ("explorationPercent", show explorationPercent)]
 
     lists = [
       (["buildings"], buildingList),
