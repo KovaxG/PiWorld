@@ -11,7 +11,7 @@ import Control.Concurrent
 import Data.Maybe
 
 import GameLogic (newGameStateVar, gameLoop)
-import GameTypes (Event(NewVillage), GameState (..), nameGenerator, showMap, User (..), UserName (..), Password (..), VillageName (..))
+import GameTypes (Event(NewVillage), GameState (..), nameGenerator, User (..), UserName (..), Password (..), VillageName (..))
 import LoginDB (newLoginDB)
 import MessageQueue (newEmptyQueue, pushMessage, popMessages, MessageQueue)
 import Server (runServer)

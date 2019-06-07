@@ -117,7 +117,11 @@ data Tool = EmptyHanded
           deriving (Show)
 
 data BuildingSize = Tiny | Small | Normal | Big deriving (Show)
+
 data Building = Building BuildingSize deriving (Show)
+
+buildingSize :: Building -> BuildingSize
+buildingSize (Building size) = size
 
 getTerrain :: Map Location Terrain -> [Location] -> [Terrain]
 getTerrain t = catMaybes . fmap (flip Map.lookup t)
@@ -147,37 +151,6 @@ addResource res qty inv =
   where
     notFound = Map.insert res qty inv
     found q = Map.insert res (q + qty) inv
-
-toolFactor :: Tool -> Double
-toolFactor t = case t of
-  EmptyHanded -> 1.0
-  ChippedStone -> 2.0
-  StoneTool -> 3.0
-  CopperTool -> 4.0
-  IronTool -> 4.5
-  SteelTool -> 4.9
-
-showMap :: GameState -> String
-showMap gameState =
-  concatMap (++"\n")
-    $ Utils.split x
-    [
-      putCity (i, j)
-      $ draw
-      $ fromJust
-      $ lookup (i, j) (gTerrain gameState)
-      | i <- [1 .. x], j <- [1 .. y]
-    ]
-  where
-    (x, y) = gSize gameState
-    draw t = case t of
-      Grass -> ' '
-      Forest -> '|'
-      RockyHill -> '*'
-    putCity loc c =
-      if any (==loc) $ fmap vLocation (gVillages gameState)
-      then 'O'
-      else c
 
 villagesOf :: GameState -> User -> [Village]
 villagesOf gameState user = List.filter ((== user) . vUser) $ gVillages gameState

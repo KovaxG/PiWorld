@@ -16,13 +16,15 @@ module VillageAlgebra (
   updatePercentDiscoveringLocation,
   clearDiscoveringLocation,
   addDiscoveredLocation,
-  startNewDiscoveringLocation
+  startNewDiscoveringLocation,
+  getInventoryCapacity
 ) where
 
 import Control.Monad.State
 import Data.List
 import Data.Maybe
 
+import Constants
 import GameTypes
 import ServerTypes
 import Utils
@@ -69,3 +71,8 @@ addDiscoveredLocation loc = modify $ \v -> v { vDiscoveredLocations = loc : vDis
 
 startNewDiscoveringLocation :: Location -> StateT Village IO ()
 startNewDiscoveringLocation loc = modify $ \v -> v { vDiscoveringLocation = Just (loc, 0) }
+
+getInventoryCapacity :: StateT Village IO Int
+getInventoryCapacity = do
+  buildings <- gets vBuildings
+  return $ sum $ fmap (capacity . buildingSize) buildings

@@ -11,6 +11,7 @@ module Utils where
 
 import Control.Monad.State
 import Data.Char
+import Data.Either
 import Data.List
 import Data.Maybe
 
@@ -129,3 +130,6 @@ toEither b ma = maybe (Left b) Right ma
 
 safeHead :: [a] -> Maybe a
 safeHead = listToMaybe
+
+leftMap :: (a -> c) -> Either a b -> Either c b
+leftMap f = either (Left . f) Right

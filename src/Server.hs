@@ -12,9 +12,7 @@ module Server (
 ) where
 
 import Control.Concurrent.MVar
-import Data.Bifunctor
 import Data.ByteString.Char8 (pack, unpack)
-import Data.Either.Extra
 import Data.List as List
 import Data.Map as Map hiding (member, (\\))
 import Data.Maybe
@@ -24,24 +22,22 @@ import Network.Simple.TCP
 import System.CPUTime
 import Text.Parsec
 
+import Constants
 import GameTypes
 import HTMLView
 import LoginDB
 import MessageQueue
+import RequestParser
 import ServerTypes
 import UserDB
 import Utils
-
-host = Host "127.0.0.1" --"192.168.0.136"
-port = "80"
-
 
 runServer :: MVar GameState -> MessageQueue Event -> LoginDB -> UserDB -> IO ()
 runServer gameStateVar messageQueue loginDB userDB =
   serve host port $ \(socket, addr) -> do
     startTime <- getCPUTime
-    request <- maybe "No Message" unpack <$> recv socket 1024
-    let validRequestEither = parseRequest <$> parseGetRequest request
+    request <- maybe "No Message" unpack <$> recv socket receiveBufferSize
+    let validRequestEither = parseRequest <$> parseHTTPRequest request
 
     maybeUser <- getUserFromIp loginDB (ipOf addr)
     response <- either unrecognisedRequest
@@ -84,11 +80,8 @@ processImagePath maybeUser gameState s =
     myLookup worldMap visibleLocs loc
       | elem loc visibleLocs =
         Map.lookup loc worldMap
-        |> maybe hiddenTile tileToPath
-      | otherwise = hiddenTile
-      where
-        hiddenTile :: String
-        hiddenTile = "favicon.ico"
+        |> maybe hiddenMapTile tileToPath
+      | otherwise = hiddenMapTile
 
     omniscientView :: Map Location Terrain -> [Location]
     omniscientView = keys
@@ -141,6 +134,7 @@ handleRequest _ _ _ gameStateVar _ (Just user) (ViewVillage id) = do
                             (vBuildings village)
                             (vInventory village)
                             (maybe 0 snd $ vDiscoveringLocation village)
+                            (sum $ fmap (capacity . buildingSize) $ vBuildings village)
       else DefaultVillageView (vName village) (uName $ vUser village) (vLocation village)
 
 handleRequest loginDB ip _ _ _ _ Logout = do
@@ -213,86 +207,5 @@ handleRequest loginDB ip userDB gameStateVar messageQueue (Just user) (JobChange
 handleRequest _ _ _ _ _ _ _ = return IllegalAction
 
 
-parseGetRequest :: String -> Either String GetRequest
-parseGetRequest = first show . parse rule "Parsing Request" . removeCR
-  where
-    removeCR :: String -> String
-    removeCR = List.filter (!='\r')
-
-    rule = choice [try getWithVars, try pureGet, try post]
-
-    pureGet = do
-      string "GET /"
-      content <- many (noneOf " ")
-      spaces
-      return $ Get content []
-
-    nonEmptyLine = alphaNum >> many (noneOf "\n\r")
-
-    post = do
-      string "POST"
-      _ <- many (noneOf "\n\r")
-      newline
-      _ <- sepEndBy nonEmptyLine newline
-      newline
-      tuples <- sepBy tuple (char '&')
-      return $ Post tuples
-
-    getWithVars = do
-      string "GET /"
-      content <- many (noneOf "? ")
-      char '?'
-      tuples <- sepBy tuple (char '&')
-      spaces
-      return $ Get content tuples
-
-    tuple = do
-      key <- many (noneOf "=& ")
-      char '='
-      value <- many (noneOf "=& ")
-      return (key, value)
-
-
-parseRequest :: GetRequest -> Request
-parseRequest req@(Post vars)
-  | member userName vars && member passWord vars =
-    let name = UserName $ unsafeLookup userName vars
-        pass = Password $ unsafeLookup passWord vars
-    in GameRequest $ Login name pass
-  | otherwise = NotSupported (show req ++ " not supported.")
-  where
-    userName = "username"
-    passWord = "password"
-
-parseRequest req@(Get main vars)
-  | startsWith "favicon.ico" main = Resource main
-  | main == "" && hasKeys && isID firstKey = GameRequest $ ViewVillage (read firstKey)
-  | main == "map" && hasKeys && isID firstKey = GameRequest $ ViewVillage (read firstKey)
-  | main == "" = GameRequest MainMenu
-  | main == "map" = GameRequest WorldMap
-  | main == "login" && length vars < 2 = GameRequest LoginPage
-  | main == "login" && member userName vars && member passWord vars =
-    let name = UserName $ unsafeLookup userName vars
-        pass = Password $ unsafeLookup passWord vars
-    in GameRequest $ Login name pass
-  | main == "logout" = GameRequest Logout
-  | main == "person" && hasKeys && isID firstKey && firstValue == "Job" = GameRequest $ JobMenu (read firstKey)
-  | main == "person" && hasKeys && isID firstKey && isJob firstValue =
-    GameRequest $ JobChange (read firstKey) (fromJust $ safeRead firstValue)
-  | startsWith resource main = Resource (main \\ resource)
-  | otherwise = NotSupported $ show req ++ " not supported."
-  where
-    isJob s = isJust $ (safeRead s :: Maybe Job)
-    hasKeys = length vars > 0
-    firstKey = fst $ head vars
-    firstValue = unsafeLookup firstKey vars
-    userName = "username"
-    passWord = "password"
-    resource = "resource/"
-
-
 ipOf :: SockAddr -> String
 ipOf = takeWhile (!=':') . show
-
-unsafeLookup :: (Show a, Eq a) => a -> [(a, b)] -> b
-unsafeLookup a = fromMaybe (error $ "[Error] Looking up" ++ show a) . List.lookup a

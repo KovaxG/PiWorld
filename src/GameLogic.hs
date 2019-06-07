@@ -17,13 +17,14 @@ import Control.Concurrent.MVar
 import Control.DeepSeq
 import Control.Monad.State
 import Data.List
-import Data.Map hiding (foldl, (\\), filter, null, take)
+import Data.Map as Map hiding (foldl, (\\), filter, null, take)
 import Data.Maybe
 import Data.Set hiding (foldl, (\\), filter, null, take)
 import Debug.Trace
 import System.Time.Extra
 import System.Random.Shuffle
 
+import Constants
 import GameTypes
 import MessageQueue
 import ServerTypes
@@ -33,12 +34,13 @@ import VillageAlgebra
 newGameStateVar :: IO (MVar GameState)
 newGameStateVar = newMVar newState
 
+
 newState :: GameState
 newState =
   GameState {
     gTickNr = 0,
     gSize = (width, height),
-    gTerrain = Data.Map.fromList sections,
+    gTerrain = Map.fromList sections,
     gVillages = [],
     gPersonID = 0
   }
@@ -51,37 +53,28 @@ newState =
       | mod (x * y) 21 < 2 = RockyHill
       | otherwise = Grass
 
+
 gameLoop :: MessageQueue Event -> MVar GameState -> IO ()
 gameLoop queueVar gameStateVar = do
-  threadDelay 1000000 -- TODO account for time taken to update tick
+  threadDelay gameLoopDelay -- TODO account for time taken to update tick
   events <- popMessages queueVar
   (dt, gameState) <- duration(updateGameState gameStateVar events)
-  --putStrLn $ show event
-  --putStrLn $ show $ gTickNr gameState
   gameLoop queueVar gameStateVar
 
-ticksPerDay :: Int
-ticksPerDay = 24 * 60 * 60
-
-perDayToPerTick :: Int -> Double
-perDayToPerTick a = fromIntegral a / fromIntegral ticksPerDay
 
 updateGameState :: MVar GameState -> [Event] -> IO GameState
 updateGameState gameStateVar events' = do
   let events = Tick : events'
   gameState <- takeMVar gameStateVar
-  newState <- execStateT (traverse tick events) gameState
-  --putStrLn $ show $ vInventory $ head $ gVillages newState
-  --putStrLn $ show $ vDiscoveredTerrain $ head $ gVillages newState
-  --putStrLn $ show newState
-  --deepseq newState $ putMVar gameStateVar newState -- TODO to force eval
+  newState <- execStateT (traverse tick events) gameState -- TODO force eval, maybe done now since we do IO?
   putMVar gameStateVar newState
   return newState
+
 
 tick :: Event -> StateT GameState IO ()
 tick Tick = do
   updateTickNr
-  updateAllVillagers
+  updateVillages
 tick (NewVillage name location user names) = do
   addNewVillage name location user names
 tick (ChangeJobOfVillager id newJob) = do
@@ -92,6 +85,7 @@ tick (ChangeJobOfVillager id newJob) = do
     updateVillagerJob village =
       let newVills = replacefw ((==id) . pID) (\p -> p { pJob = newJob } ) (vVillagers village)
       in village { vVillagers = newVills }
+
 
 addNewVillage :: VillageName -> Location -> User -> [Name] -> StateT GameState IO ()
 addNewVillage name location user names = do
@@ -106,7 +100,7 @@ addNewVillage name location user names = do
     vCreated = curTick,
     vName = name,
     vLocation = location,
-    vInventory = addResource Food 16.0 emptyInventory,
+    vInventory = addResource Food startingFood emptyInventory,
     vVillagers = newPeople,
     vBuildings = [Building Normal],
     vDiscoveredLocations = [location],
@@ -117,18 +111,39 @@ addNewVillage name location user names = do
   let newPersonId = maximum $ fmap pID newPeople
   modify $ \s -> s { gPersonID = newPersonId + 1}
 
-updateAllVillagers :: StateT GameState IO ()
-updateAllVillagers = do
-  villages <- gets gVillages
+
+updateVillages :: StateT GameState IO ()
+updateVillages = do
   terrain <- gets gTerrain
-  newVillages <- liftIO $ traverse (execStateT (updateVillagers terrain)) villages
+  villages <- gets gVillages
+  newVillages <- liftIO $ traverse (execStateT (updateVillage terrain)) villages
   modify $ \s -> s { gVillages = newVillages }
 
-updateVillagers :: Data.Map.Map Location Terrain -> StateT Village IO ()
+
+updateVillage :: Map.Map Location Terrain -> StateT Village IO ()
+updateVillage terrain = do
+  updateVillagers terrain
+  idleVillageLogic
+
+
+updateVillagers :: Map.Map Location Terrain -> StateT Village IO ()
 updateVillagers terrain = do
   gathererLogic terrain
   explorerLogic terrain
   needsLogic
+
+
+idleVillageLogic :: StateT Village IO ()
+idleVillageLogic = do
+  totalCapacity <- fromIntegral <$> getInventoryCapacity
+  modifyInventory $ \inv ->
+    let totalResources = sum $ Map.elems inv
+        totalResourceTypes = genericLength $ Map.keys inv
+        overfillPerResource = (totalResources - totalCapacity) / totalResourceTypes
+    in if totalResources > totalCapacity
+       then fmap (\q -> q - (overfillPerResource * overfilledResourceDegradationRatePerTick)) inv
+       else inv
+
 
 needsLogic :: StateT Village IO ()
 needsLogic = do
@@ -141,21 +156,6 @@ needsLogic = do
   setVillagers newVillagers
   modifyInventory (\inv -> updateResource inv Food newFood)
   where
-    eatingRatePerDay = 3
-    eatingRatePerTick = perDayToPerTick eatingRatePerDay
-
-    hungerRecoveryRatePerDay = 300
-    hungerRecoveryRatePerTick = perDayToPerTick hungerRecoveryRatePerDay
-
-    hungerRatePerDay = 100
-    hungerRatePerTick = perDayToPerTick hungerRatePerDay
-
-    healingRatePerDay = 10
-    healingRatePerTick = perDayToPerTick healingRatePerDay
-
-    damageRatePerDay = 20
-    damageRatePerTick = perDayToPerTick damageRatePerDay
-
     updateAccordingToStatus :: Person -> Person
     updateAccordingToStatus p =
       case pStatus p of
@@ -197,17 +197,19 @@ needsLogic = do
       | otherwise = (Healing, food - eatingRatePerTick)
     updateStatus Dead food _ _ = (Dead, food)
 
-gathererLogic :: Data.Map.Map Location Terrain -> StateT Village IO ()
+
+gathererLogic :: Map.Map Location Terrain -> StateT Village IO ()
 gathererLogic terrain = do
   villagers <- gets vVillagers
-  location <- gets vLocation
-  let resources = getTerrain terrain (aroundLocation 1 location)
+  locations <- gets vDiscoveredLocations
+  let resources = getTerrain terrain locations
 
   inventory <- gets vInventory
   let newInventory = execState (updateInventory resources villagers) inventory
   setInventory newInventory
 
-explorerLogic :: Data.Map.Map Location Terrain -> StateT Village IO ()
+
+explorerLogic :: Map.Map Location Terrain -> StateT Village IO ()
 explorerLogic terrain = do
   villagers <- gets vVillagers
   let explorerNr = countf (jobIs Explorer) villagers
@@ -229,7 +231,7 @@ explorerLogic terrain = do
 
     continueExploringLocation :: Int -> (Location, Percent) -> StateT Village IO ()
     continueExploringLocation explorerNr (exploringLocation, percentExplored) = do
-      let rate = explorationRate * fromIntegral explorerNr
+      let rate = explorationRatePerTick * fromIntegral explorerNr
       let percentExplored' = percentExplored + rate
       if percentExplored' >= 100.0
       then do
@@ -238,14 +240,13 @@ explorerLogic terrain = do
       else
         updatePercentDiscoveringLocation percentExplored'
 
-    explorationRate :: Double
-    explorationRate = 1 / 60
 
 getAccessibleLocations :: [Location] -> [Location]
 getAccessibleLocations locs =
    nub (neighbors =<< locs) \\ locs
    where
      neighbors (x,y) = [(x+1, y), (x-1,y), (x, y+1), (x, y-1)]
+
 
 updateInventory :: [Terrain] -> [Person] -> State Inventory ()
 updateInventory terrains ps = do
@@ -259,12 +260,6 @@ updateInventory terrains ps = do
         factor = sum $ fmap (toolFactor . pTool) $ filter (jobIs j) ps
         gatherRate = (*) factor $ fromIntegral $ countf (jobIs j) ps
 
-    gatherRatePerDay = 10
-    gatherRatePerTick = perDayToPerTick gatherRatePerDay
-
-
-aroundLocation :: Int -> Location -> [Location]
-aroundLocation n (x, y) = [(i, j) | i <- [x-n.. x+n], j <- [y-n .. y+n]]
 
 getLastId :: StateT GameState IO ID
 getLastId = gets $ fromMaybe 0 . safeMax . fmap vID . gVillages

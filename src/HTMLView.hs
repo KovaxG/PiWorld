@@ -11,6 +11,7 @@ module HTMLView where
 
 import Data.ByteString.Char8 (pack, unpack)
 import qualified Data.ByteString as BS
+import Data.Map as Map
 
 import GameTypes
 import ServerTypes
@@ -36,7 +37,13 @@ toHTML processTime (DefaultVillageView villageName userName location) = do
       ("location", show location),
       ("processTime", show processTime)]
 
-toHTML processTime (OwnedVillageView villageName location  villagers buildings inventory explorationPercent) = do
+toHTML processTime (OwnedVillageView villageName
+                                     location
+                                     villagers
+                                     buildings
+                                     inventory
+                                     explorationPercent
+                                     inventoryCapacity) = do
   contents <- readFile $ toPath "OwnedVillageView"
   return $ interpolateList lists $ interpolateString strings contents
   where
@@ -46,7 +53,9 @@ toHTML processTime (OwnedVillageView villageName location  villagers buildings i
       ("population", show $ length villagers),
       ("inventory", show inventory),
       ("processTime", show processTime),
-      ("explorationPercent", show explorationPercent)]
+      ("explorationPercent", show $ round $ explorationPercent),
+      ("inventoryCapacity", show inventoryCapacity),
+      ("currentInventorySize", show $ round $ sum $ Map.elems inventory)]
 
     lists = [
       (["buildings"], buildingList),
