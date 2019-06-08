@@ -45,6 +45,7 @@ data Village = Village {
   vInventory :: !Inventory,
   vVillagers :: ![Person],
   vBuildings :: ![Building],
+  vBuildingUnderConstruction :: !(Maybe (Building, Percent)),
   vDiscoveredLocations :: ![Location],
   vDiscoveringLocation :: !(Maybe (Location, Percent))
 } deriving (Show)
@@ -116,7 +117,10 @@ data Tool = EmptyHanded
           | SteelTool
           deriving (Show)
 
-data BuildingSize = Tiny | Small | Normal | Big deriving (Show)
+data BuildingSize = Tiny | Small | Normal | Big deriving (Show, Read)
+
+buildingSizes :: [BuildingSize]
+buildingSizes = [Tiny, Small, Normal, Big]
 
 data Building = Building BuildingSize deriving (Show)
 
@@ -129,6 +133,7 @@ getTerrain t = catMaybes . fmap (flip Map.lookup t)
 data Event = NewVillage VillageName Location User [Name]
            | Tick
            | ChangeJobOfVillager ID Job
+           | BuildBuilding ID BuildingSize
            deriving (Show)
 
 data Resource = Wood

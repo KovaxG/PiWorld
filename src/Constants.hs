@@ -65,6 +65,20 @@ toolFactor tool = case tool of
   IronTool -> 4.5
   SteelTool -> 4.9
 
+buildingWoodCost :: BuildingSize -> Int
+buildingWoodCost size = case size of
+  Tiny -> 23
+  Small -> 67
+  Normal -> 201
+  Big -> 603
+
+buildingStoneCost :: BuildingSize -> Int
+buildingStoneCost size = case size of
+  Tiny -> 100
+  Small -> 300
+  Normal -> 900
+  Big -> 2700
+
 -- Rates per Tick. Do not change these since they are derived from daily rates!
 
 perDayToPerTick :: Int -> Double

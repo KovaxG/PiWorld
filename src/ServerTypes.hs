@@ -28,6 +28,8 @@ data Response = DefaultVillageView VillageName UserName Location
                                  Inventory -- inventory of this village
                                  Percent -- percent explored of new tile
                                  Int -- total capacity of village
+                                 ID -- the ID of the village
+                                 (Maybe (Building, Percent)) -- Possibility of there being a building under construction
               | VillageNotFound
               | Unrecognised
               | LogoutPage
@@ -42,6 +44,7 @@ data Response = DefaultVillageView VillageName UserName Location
               | PersonJobView Name ID Job [Job]
               | JobChanged
               | Image String
+              | NewBuildingMenuView ID VillageName [BuildingSize]
               deriving (Show)
 
 data Request = Resource String
@@ -57,4 +60,6 @@ data GameRequest = MainMenu
                  | ViewVillage ID
                  | JobMenu ID
                  | JobChange ID Job
+                 | ConstructBuilding ID BuildingSize
+                 | ViewNewBuildingMenu ID
                  deriving (Show)

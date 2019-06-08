@@ -85,6 +85,17 @@ tick (ChangeJobOfVillager id newJob) = do
     updateVillagerJob village =
       let newVills = replacefw ((==id) . pID) (\p -> p { pJob = newJob } ) (vVillagers village)
       in village { vVillagers = newVills }
+tick (BuildBuilding villageId size) = do
+  villages <- gets gVillages
+  let newVillages = fmap f villages
+  modify $ \s -> s { gVillages = newVillages }
+  where
+    f :: Village -> Village
+    f v
+      | vID v == villageId && isNothing (vBuildingUnderConstruction v) =
+        v { vBuildingUnderConstruction = Just (Building size, 0) }
+      | otherwise = v
+
 
 
 addNewVillage :: VillageName -> Location -> User -> [Name] -> StateT GameState IO ()
@@ -103,6 +114,7 @@ addNewVillage name location user names = do
     vInventory = addResource Food startingFood emptyInventory,
     vVillagers = newPeople,
     vBuildings = [Building Normal],
+    vBuildingUnderConstruction = Nothing,
     vDiscoveredLocations = [location],
     vDiscoveringLocation = Nothing
   }

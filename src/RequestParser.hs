@@ -64,6 +64,8 @@ parseRequest req@(Post vars)
     passWord = "password"
 
 parseRequest req@(Get main vars)
+  | main == "construct" && length vars == 2 && firstKey == "villageId" && isID firstValue && secondValue == "Build" = GameRequest $ ConstructBuilding (read firstValue) (read secondKey)
+  | main == "newbuilding" && hasKeys && isID firstKey = GameRequest $ ViewNewBuildingMenu (read firstKey)
   | startsWith "favicon.ico" main = Resource main
   | main == "" && hasKeys && isID firstKey = GameRequest $ ViewVillage (read firstKey)
   | main == "map" && hasKeys && isID firstKey = GameRequest $ ViewVillage (read firstKey)
@@ -83,8 +85,10 @@ parseRequest req@(Get main vars)
   where
     isJob s = isJust $ (safeRead s :: Maybe Job)
     hasKeys = length vars > 0
-    firstKey = fst $ head vars
+    firstKey = fst $ vars !! 0
     firstValue = unsafeLookup firstKey vars
+    secondKey = fst $ vars !! 1
+    secondValue = unsafeLookup secondKey vars
     userName = "username"
     passWord = "password"
     resource = "resource/"

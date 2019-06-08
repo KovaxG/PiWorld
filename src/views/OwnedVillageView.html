@@ -16,12 +16,19 @@
   Buildings: <br>
   #buildings <br>
 
+  Building Under Construction:
+  $buildingUnderConstruction
+
+  <form action="/newbuilding" method="get">
+    <input type="submit" name="$villageID" value="Build New Building"> <br>
+  </form>
+
   <br>
   Inventory: <br>
   Capacity: $currentInventorySize/$inventoryCapacity <br>
   $inventory <br>
 
-  Percentage of new tile explored: $explorationPercent <br>
+  Percentage of new tile explored: $explorationPercent% <br>
 
   <form action="/" method="get">
     <br> Click here to return to the main page. <br>

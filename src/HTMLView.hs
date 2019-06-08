@@ -13,6 +13,7 @@ import Data.ByteString.Char8 (pack, unpack)
 import qualified Data.ByteString as BS
 import Data.Map as Map
 
+import Constants
 import GameTypes
 import ServerTypes
 import Utils
@@ -43,7 +44,9 @@ toHTML processTime (OwnedVillageView villageName
                                      buildings
                                      inventory
                                      explorationPercent
-                                     inventoryCapacity) = do
+                                     inventoryCapacity
+                                     villageID
+                                     maybeBuildingUnderConstruction) = do
   contents <- readFile $ toPath "OwnedVillageView"
   return $ interpolateList lists $ interpolateString strings contents
   where
@@ -55,7 +58,17 @@ toHTML processTime (OwnedVillageView villageName
       ("processTime", show processTime),
       ("explorationPercent", show $ round $ explorationPercent),
       ("inventoryCapacity", show inventoryCapacity),
-      ("currentInventorySize", show $ round $ sum $ Map.elems inventory)]
+      ("currentInventorySize", show $ round $ sum $ Map.elems inventory),
+      ("villageID", show villageID),
+      ("buildingUnderConstruction", buildingUnderConstruction)]
+
+    buildingUnderConstruction :: String
+    buildingUnderConstruction =
+      maybe noBuilding format maybeBuildingUnderConstruction
+      where
+        noBuilding = "None"
+        format (building, percent) = show building ++ " (" ++ show percent ++ "% Done)"
+
 
     lists = [
       (["buildings"], buildingList),
@@ -136,5 +149,16 @@ toHTML processTime (PersonJobView name id job availableJobs) = do
     jobList = fmap (\j -> [show id, show j]) availableJobs
 
 toHTML processTime JobChanged = readFile $ toPath "JobChangedView"
+
+toHTML processTime (NewBuildingMenuView villageID villageName buildingSizes) = do
+  contents <- readFile $ toPath "NewBuildingMenuView"
+  return $ interpolateList lists $ interpolateString vars contents
+  where
+    vars = [
+      ("villageName", getVillageName villageName),
+      ("villageID", show villageID)]
+    lists = [(["buildingSize", "buildingCost", "buildingCapacity", "buildingSize"], buildingList)]
+
+    buildingList = fmap (\s -> [show s, show $ buildingWoodCost s, show $ capacity s, show s]) buildingSizes
 
 toHTML _ (Image path) = unpack <$> BS.readFile ("res/" ++ path)

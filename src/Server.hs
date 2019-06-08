@@ -116,6 +116,23 @@ handleRequest :: LoginDB
               -> GameRequest
               -> IO Response
 
+handleRequest loginDB ip userDB gameStateVar messageQueue (Just user) (ConstructBuilding villageID buildingSize) = do
+  gameState <- readMVar gameStateVar
+  maybe notFound villageFound $ getVillage gameState villageID
+  where
+    notFound = return VillageNotFound
+    villageFound village = do
+      pushMessage messageQueue $ BuildBuilding villageID buildingSize
+      handleRequest loginDB ip userDB gameStateVar messageQueue (Just user) (ViewVillage $ vID village)
+
+
+handleRequest _ _ _ gameStateVar _ (Just user) (ViewNewBuildingMenu id) = do
+  gameState <- readMVar gameStateVar
+  return $ maybe notFound villageFound $ getVillage gameState id
+  where
+    notFound = VillageNotFound
+    villageFound village = NewBuildingMenuView (vID village) (vName village) (buildingSizes)
+
 handleRequest _ _ _ gameStateVar _ Nothing (ViewVillage id) = do
   gameState <- readMVar gameStateVar
   return $ maybe notFound villageFound $ getVillage gameState id
@@ -138,6 +155,8 @@ handleRequest _ _ _ gameStateVar _ (Just user) (ViewVillage id) = do
                             (vInventory village)
                             (maybe 0 snd $ vDiscoveringLocation village)
                             (sum $ fmap (capacity . buildingSize) $ vBuildings village)
+                            (vID village)
+                            (vBuildingUnderConstruction village)
       else DefaultVillageView (vName village) (uName $ vUser village) (vLocation village)
 
 handleRequest loginDB ip _ _ _ _ Logout = do
