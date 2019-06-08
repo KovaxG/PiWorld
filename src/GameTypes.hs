@@ -97,6 +97,7 @@ data Job = Civilian
          | Explorer
          | Hunter
          | StoneGatherer
+         | Builder
          deriving (Show, Read, Eq)
 
 newtype HungerMeter = HungerMeter { getHunger :: Double } deriving (Show, Eq, Ord)

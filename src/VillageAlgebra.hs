@@ -17,7 +17,10 @@ module VillageAlgebra (
   clearDiscoveringLocation,
   addDiscoveredLocation,
   startNewDiscoveringLocation,
-  getInventoryCapacity
+  getInventoryCapacity,
+  updatePercentBuildingUnderConstruction,
+  clearBuildingUnderContsruction,
+  addBuilding
 ) where
 
 import Control.Monad.State
@@ -73,3 +76,23 @@ getInventoryCapacity :: (Monad m) => StateT Village m Int
 getInventoryCapacity = do
   buildings <- gets vBuildings
   return $ sum $ fmap (capacity . buildingSize) buildings
+
+updatePercentBuildingUnderConstruction :: (Monad m) => Double -> StateT Village m ()
+updatePercentBuildingUnderConstruction newPercent = do
+  buildingUnderConstruction <- gets vBuildingUnderConstruction
+  maybe noBuilding updatePercent buildingUnderConstruction
+  where
+    noBuilding = return ()
+    updatePercent :: (Monad m) => (Building, Percent) ->  StateT Village m ()
+    updatePercent (building, _) =
+      modify $ \v -> v { vBuildingUnderConstruction = Just (building, newPercent) }
+
+clearBuildingUnderContsruction :: (Monad m) => StateT Village m ()
+clearBuildingUnderContsruction =
+  modify $ \v -> v { vBuildingUnderConstruction = Nothing }
+
+
+addBuilding :: (Monad m) => Building -> StateT Village m ()
+addBuilding building = do
+  buildings <- gets vBuildings
+  modify $ \v -> v { vBuildings = building : buildings }

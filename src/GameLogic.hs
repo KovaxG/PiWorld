@@ -142,6 +142,7 @@ updateVillagers :: Map.Map Location Terrain -> StateT Village IO ()
 updateVillagers terrain = do
   gathererLogic terrain
   explorerLogic terrain
+  builderLogic
   needsLogic
 
 
@@ -221,6 +222,27 @@ gathererLogic terrain = do
   setInventory newInventory
 
 
+builderLogic :: StateT Village IO ()
+builderLogic = do
+  buildingUnderConstruction <- gets vBuildingUnderConstruction
+  maybe doNothing construct buildingUnderConstruction
+  where
+    doNothing = return ()
+    construct (building, percent) = do
+      -- TODO check resources if they are available
+      villagers <- gets vVillagers
+      let builderNr = fromIntegral $ countf (jobIs Builder) villagers
+      let newPercent = percent + builderNr -- TODO add some rate
+      if newPercent >= 100
+      then do
+        -- TODO maybe I could use 1 function instead of 2?
+        clearBuildingUnderContsruction
+        addBuilding building
+      else
+        updatePercentBuildingUnderConstruction newPercent
+
+
+
 explorerLogic :: Map.Map Location Terrain -> StateT Village IO ()
 explorerLogic terrain = do
   villagers <- gets vVillagers
@@ -247,6 +269,7 @@ explorerLogic terrain = do
       let percentExplored' = percentExplored + rate
       if percentExplored' >= 100.0
       then do
+        -- TODO maybe I could use 1 function instead of 2?
         clearDiscoveringLocation
         addDiscoveredLocation exploringLocation
       else

@@ -206,7 +206,7 @@ handleRequest _ _ _ gameStateVar _ (Just user) (JobMenu id) = do
     found worldMap villages p =
       let village = fromJust $ find (elem p . vVillagers) villages
           villageJobs = catMaybes $ fmap jobOf (getTerrain worldMap $ vDiscoveredLocations village)
-          availableJobs = [Civilian, Hunter, Explorer] ++ villageJobs
+          availableJobs = [Civilian, Hunter, Explorer, Builder] ++ villageJobs
       in PersonJobView (pName p) (pID p) (pJob p) availableJobs
 
     jobOf :: Terrain -> Maybe Job
@@ -215,14 +215,15 @@ handleRequest _ _ _ gameStateVar _ (Just user) (JobMenu id) = do
     jobOf _ = Nothing
 
 handleRequest loginDB ip userDB gameStateVar messageQueue (Just user) (JobChange id newJob) = do
-  gameState <- readMVar gameStateVar
-  let allPeople = vVillagers =<< gVillages gameState
-  maybe notFound found $ find ((==id) . pID) allPeople
+  villages <- gVillages <$> readMVar gameStateVar
+  let allPeople = vVillagers =<< villages
+  maybe notFound (found villages) $ find ((==id) . pID) allPeople
   where
     nameAndId v = (vName v, vID v)
     notFound = return IllegalAction
-    found p = do
+    found villages p = do
       pushMessage messageQueue $ ChangeJobOfVillager id newJob
-      return JobChanged
+      let villageId = vID $ fromJust $ find (elem  p . vVillagers) villages
+      handleRequest loginDB ip userDB gameStateVar messageQueue (Just user) (ViewVillage villageId)
 
 handleRequest _ _ _ _ _ _ _ = return IllegalAction
